@@ -50,7 +50,7 @@ namespace WpfBlueTooth
                     foundDev = dev;
                     found = true;
                 }
-                Console.WriteLine("found dev");
+                Dsp("found dev");
                 bu.StopScan();
                 DoPair();
             }
@@ -72,13 +72,14 @@ namespace WpfBlueTooth
                 var ch = chars.Find(c => c.Uuid.ToString().StartsWith("0000ffe1"));
                 if (ch != null)
                 {
-                    Console.WriteLine("sending pt:180|");
+                    Dsp("found ch");
+                    Dsp("sending pt:180|");
                     await ch.WriteString("pt:180|");
                     //while (true)
                     {
                         var st = await ch.ReadString();
                         //if (st == null) continue;
-                        Console.WriteLine($"got '{st}'");
+                        Dsp($"got '{st}'");
                     }
                 }
             });
@@ -86,6 +87,14 @@ namespace WpfBlueTooth
         private void Test_Click(object sender, RoutedEventArgs e)
         {
             DoPair();
+        }
+
+        void Dsp(string s)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                txtInfo.Text = txtInfo.Text+"\n"+s;
+            }));
         }
     }
 }

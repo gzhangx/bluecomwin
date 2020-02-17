@@ -15,7 +15,7 @@
             <RowDefinition/>
             <RowDefinition Height="50"/>
         </Grid.RowDefinitions>
-        <TextBlock x:Name="txtInfo"></TextBlock>
+        <TextBox x:Name="txtInfo" MaxLines="20" ></TextBox>
         <Button Grid.Column="0" Grid.Row="1" x:Name="test" Click="Test_Click"></Button>
     </Grid>
 </Window>
