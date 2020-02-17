@@ -56,7 +56,7 @@ namespace WpfBlueTooth
             }
         }
 
-        bool cfged = false;
+        bool cfged = true;
         private async Task DoPair()
         {
             if (foundDev == null) return;
@@ -83,6 +83,7 @@ namespace WpfBlueTooth
                     {
                         try
                         {
+                            Dsp("cfg tru before trye");
                             var cfg = await ch.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify).AsTask();
                             if (cfg == GattCommunicationStatus.Success)
                             {
