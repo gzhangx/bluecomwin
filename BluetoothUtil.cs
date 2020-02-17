@@ -125,7 +125,6 @@ namespace WpfBlueTooth
                             chRes.Add(ch);
                             Console.WriteLine(" ===>  " + service.Uuid + " " + ch.Uuid);
                         }
-                        break;
                     }else
                     {
                         Console.WriteLine(" !====>  " + service.Uuid + " " + chars.Status);

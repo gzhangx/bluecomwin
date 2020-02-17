@@ -61,7 +61,7 @@ namespace WpfBlueTooth
                     var ch = chars.Find(c => c.Uuid.ToString().StartsWith("0000ffe1"));
                     if (ch != null)
                     {
-                        Console.WriteLine("sending 1234");
+                        Console.WriteLine("sending pt:180|");
                         await ch.WriteString("pt:180|");
                         while (true)
                         {
