@@ -161,7 +161,13 @@ namespace WpfBlueTooth
                 LogInfo("Pairing successful");
             }
             else
-                LogInfo($"Pairing failed {result.Status}");
+            {
+                LogInfo($"Pairing failed {result.Status} canPair = {device.DeviceInformation.Pairing.CanPair}");
+                var ups = await device.DeviceInformation.Pairing.UnpairAsync().AsTask();
+                LogInfo($"Unpair {ups}");
+
+            }
+            
             return result.Status;
         }
     }

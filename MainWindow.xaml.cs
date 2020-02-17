@@ -56,34 +56,77 @@ namespace WpfBlueTooth
             }
         }
 
+        bool cfged = false;
         private async Task DoPair()
         {
             if (foundDev == null) return;
-            if (foundDev.Errors.Count > 0)
+            if (foundDev.Errors.Count > 0 || foundDev.Characters.Count == 0)
             {
                 foundDev = await bu.CheckDevice(foundDev.device.DeviceId);
             }
             var device = foundDev.device;
             await bu.PairToBleDevice(device.DeviceId).ContinueWith(async status =>
             {
-                Console.WriteLine("paired to dev");
+                Console.WriteLine("paired to dev " + device.ConnectionStatus);
                 var chars = foundDev.Characters;
                 
                 var ch = chars.Find(c => c.Uuid.ToString().StartsWith("0000ffe1"));
-                if (ch != null)
+                if (ch == null)
                 {
-                    Dsp("found ch");
-                    Dsp("sending pt:180|");
-                    await ch.WriteString("pt:180|");
-                    //while (true)
+                    Dsp("no ch");
+                    return;
+                }
+                Dsp("cfg tru");
+                try
+                {
+                    if (!cfged)
                     {
-                        var st = await ch.ReadString();
-                        //if (st == null) continue;
-                        Dsp($"got '{st}'");
+                        try
+                        {
+                            var cfg = await ch.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify).AsTask();
+                            if (cfg == GattCommunicationStatus.Success)
+                            {
+                                //cfged = true;
+                                Dsp("cfg good");
+                                ch.ValueChanged += Ch_ValueChanged;
+                            }
+                            else
+                            {
+                                Dsp("bad " + cfg);
+                            }
+                        } catch (Exception exc)
+                        {
+                            Console.WriteLine(exc.Message + " err cfg");
+                        }
                     }
+
+                    if (ch != null)
+                    {
+                        Dsp("found ch");
+                        Dsp("sending pt:180|");
+                        await ch.WriteString("pt:180|");
+                        while (true)
+                        {
+                            var st = await ch.ReadString();
+                            //if (st == null) continue;
+                            Dsp($"got '{st}'");
+                        }
+                    }
+                } catch (Exception exc)
+                {
+                    Dsp(exc.Message);
+                    Console.WriteLine(exc);
                 }
             });
         }
+
+        private void Ch_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
+        {
+           var r = args.CharacteristicValue.ReadAsString();
+            Console.WriteLine("rrrrr !!!! " + r);
+            Dsp("from cb"+r);
+        }
+
         private void Test_Click(object sender, RoutedEventArgs e)
         {
             DoPair();
