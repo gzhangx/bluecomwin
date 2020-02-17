@@ -38,160 +38,54 @@ namespace WpfBlueTooth
         }
 
         bool found = false;
-        void DevFound(BluetoothLEDevice dev)
+        BluetoothUtil.ServiceDiscoverRet foundDev = null;
+        void DevFound(BluetoothUtil.ServiceDiscoverRet dev)
         {
             if (found) return;
-            if (dev.Name == "MLT-BT05")
+            if (dev.device.Name == "MLT-BT05")
             {
                 lock(bu)
                 {
                     if (found) return;
+                    foundDev = dev;
                     found = true;
                 }
                 Console.WriteLine("found dev");
                 bu.StopScan();
-                bu.PairToBleDevice(dev.DeviceId).ContinueWith(async charsTask =>
-                {
-                    Console.WriteLine("paired to dev");
-                    var chars = await charsTask;
-                    chars.ForEach(c =>
-                    {
-                        Console.WriteLine($"DONE {c.Uuid} {c.UserDescription} {c.Service.Uuid}");
-                    });
-                    var ch = chars.Find(c => c.Uuid.ToString().StartsWith("0000ffe1"));
-                    if (ch != null)
-                    {
-                        Console.WriteLine("sending pt:180|");
-                        await ch.WriteString("pt:180|");
-                        while (true)
-                        {
-                            var st = await ch.ReadString();
-                            if (st == null) continue;
-                            Console.WriteLine($"got '{st}'");
-                        }
-                    }
-                });
+                DoPair();
             }
         }
 
-
-        Dictionary<ulong, BluetoothLEDevice> foundDevs = new Dictionary<ulong, BluetoothLEDevice>();
-
-        private async Task<BluetoothLEDevice> GetBluetoothLEDeviceAsync(ulong address, DateTimeOffset broadcastTime, short rssi)
+        private async Task DoPair()
         {
-            // Get bluetooth device info
-            var device = await BluetoothLEDevice.FromBluetoothAddressAsync(address).AsTask();
-
-            // Null guard
-            if (device == null)
-                return null;
-
-            // NOTE: This can throw a System.Exception for failures
-            // Get GATT services that are available
-            var gatt = await device.GetGattServicesAsync().AsTask();
-
-            // If we have any services...
-            if (gatt.Status == GattCommunicationStatus.Success)
+            if (foundDev == null) return;
+            if (foundDev.Errors.Count > 0)
             {
-                // Loop each GATT service
-                foreach (var service in gatt.Services)
-                {
-                    // This ID contains the GATT Profile Assigned number we want!
-                    // TODO: Get more info and connect
-                    var gattProfileId = service.Uuid;
-                }
+                foundDev = await bu.CheckDevice(foundDev.device.DeviceId);
             }
-            return device;
-        }
-        private async void W_Received(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
-        {
-            try
+            var device = foundDev.device;
+            await bu.PairToBleDevice(device.DeviceId).ContinueWith(async status =>
             {
-                lock (foundDevs)
+                Console.WriteLine("paired to dev");
+                var chars = foundDev.Characters;
+                
+                var ch = chars.Find(c => c.Uuid.ToString().StartsWith("0000ffe1"));
+                if (ch != null)
                 {
-                    if (foundDevs.ContainsKey(args.BluetoothAddress))
+                    Console.WriteLine("sending pt:180|");
+                    await ch.WriteString("pt:180|");
+                    //while (true)
                     {
-                        var dev = foundDevs[args.BluetoothAddress];
-                        if (dev == null) return;
-                        //Console.Write(dev.Name.Substring(0, 1));
-                        return;
+                        var st = await ch.ReadString();
+                        //if (st == null) continue;
+                        Console.WriteLine($"got '{st}'");
                     }
                 }
-                var device = await GetBluetoothLEDeviceAsync(
-                   args.BluetoothAddress,
-                   args.Timestamp,
-                   args.RawSignalStrengthInDBm);
-                lock (foundDevs)
-                {
-                    if (!foundDevs.ContainsKey(args.BluetoothAddress))
-                        foundDevs.Add(args.BluetoothAddress, device);
-                }
-                if (device == null) return;
-
-                if (device.Name == "MLT-BT05")
-                {
-                    var sers = await device.GetGattServicesAsync().AsTask();
-                    await PairToBleDevice(device.DeviceId);
-                }
-
-                Console.WriteLine(device.Name + " <<<name_addr= " + args.BluetoothAddress);
-            } catch(Exception exc)
-            {
-                Console.WriteLine(exc);
-            }
+            });
         }
-
-        bool inParing = false;
-        public async Task PairToBleDevice(string deviceId)
+        private void Test_Click(object sender, RoutedEventArgs e)
         {
-            if (inParing) return;
-            inParing = true;
-            var device = await BluetoothLEDevice.FromIdAsync(deviceId).AsTask();
-
-            if (device == null)
-                return;
-
-            //if (device.DeviceInformation.Pairing.IsPaired)
-            //    return;
-
-            // Listen out for pairing request
-            device.DeviceInformation.Pairing.Custom.PairingRequested += (sender, args) =>
-            {
-                Console.WriteLine("===> pairing request");
-                args.Accept(); // <-- pin if any
-            };
-
-            var result = await device.DeviceInformation.Pairing.Custom.PairAsync(
-                DevicePairingKinds.ConfirmOnly
-                ).AsTask();
-
-            // Log the result
-            if (result.Status == DevicePairingResultStatus.Paired)
-            {
-                Console.WriteLine("Pairing successful");
-            }
-            else
-                Console.WriteLine($"Pairing failed: {result.Status}");
-            var gatt = await device.GetGattServicesAsync().AsTask();
-
-            // If we have any services...
-            if (gatt.Status == GattCommunicationStatus.Success)
-            {
-                foreach (var service in gatt.Services)
-                {
-                    var gattProfileId = service.Uuid;
-                    var chars = await service.GetCharacteristicsAsync().AsTask();
-                    if (chars.Status == GattCommunicationStatus.Success)
-                    {
-                        foreach(var ch in chars.Characteristics)
-                        {
-                            Console.WriteLine(ch);
-                            Console.WriteLine(ch.UserDescription + " <<desc uuid=" + ch.Uuid);
-                            Console.WriteLine(ch.CharacteristicProperties);
-                        }
-                    }
-                }
-            }
+            DoPair();
         }
     }
 }

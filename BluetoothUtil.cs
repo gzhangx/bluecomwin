@@ -14,12 +14,23 @@ namespace WpfBlueTooth
 {
     public class BluetoothUtil
     {
+        public class ServiceDiscoverRet
+        {
+            public BluetoothLEDevice device { get; set; }
+            public List<GattCharacteristic> Characters { get; set; }
+            public List<GComErrors> Errors { get; set; }
+        }
+        public class GComErrors
+        {
+            public string uuid { get; set; }
+            public GattCommunicationStatus Status { get; set; }
+        }
         BluetoothLEAdvertisementWatcher bleWatcher;
-        Dictionary<ulong, BluetoothLEDevice> foundDevs = new Dictionary<ulong, BluetoothLEDevice>();
+        Dictionary<ulong, ServiceDiscoverRet> foundDevs = new Dictionary<ulong, ServiceDiscoverRet>();
         protected Action<string, Exception> onError;
         public Action<string> OnInfo;
-        protected Action<BluetoothLEDevice> OnDeviceFound;
-        public BluetoothUtil(Action<BluetoothLEDevice> devFound, Action<string, Exception> onerr = null)
+        protected Action<ServiceDiscoverRet> OnDeviceFound;
+        public BluetoothUtil(Action<ServiceDiscoverRet> devFound, Action<string, Exception> onerr = null)
         {
             OnDeviceFound = devFound;
             onError = onerr;
@@ -43,18 +54,6 @@ namespace WpfBlueTooth
             OnInfo?.Invoke(s);
         }
 
-        private async Task<BluetoothLEDevice> GetBluetoothLEDeviceAsync(ulong address)
-        {
-            // Get bluetooth device info
-            var device = await BluetoothLEDevice.FromBluetoothAddressAsync(address).AsTask();
-
-            // Null guard
-            if (device == null)
-                return null;
-
-            OnDeviceFound?.Invoke(device);
-            return device;
-        }
         private async void BleWatcher_Received(BluetoothLEAdvertisementWatcher sender, BluetoothLEAdvertisementReceivedEventArgs args)
         {
             try
@@ -69,12 +68,23 @@ namespace WpfBlueTooth
                         return;
                     }
                 }
-                var device = await GetBluetoothLEDeviceAsync(args.BluetoothAddress);
+
+                var device = await BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress).AsTask();
+                if (device == null)
+                    return;
+
+                ServiceDiscoverRet devd = null;
+                    devd = await CheckDevice(device);
+                    if (devd.Errors.Count > 0) LogInfo("Has Errors!!!!!");
+                
+                OnDeviceFound?.Invoke(devd);
                 lock (foundDevs)
                 {
                     if (!foundDevs.ContainsKey(args.BluetoothAddress))
-                        foundDevs.Add(args.BluetoothAddress, device);
+                        foundDevs.Add(args.BluetoothAddress, devd);
                 }
+
+                
             }
             catch (Exception exc)
             {
@@ -82,15 +92,60 @@ namespace WpfBlueTooth
             }
         }
 
+        public async Task<ServiceDiscoverRet> CheckDevice(string deviceId)
+        {
+            var device = await BluetoothLEDevice.FromIdAsync(deviceId).AsTask();
+            return await CheckDevice(device);
+        }
+        protected async Task<ServiceDiscoverRet> CheckDevice(BluetoothLEDevice device)
+        {
+            if (device == null) return null;
+            ServiceDiscoverRet ret = new ServiceDiscoverRet
+            {
+                device = device,
+                Characters = new List<GattCharacteristic>(),
+                Errors = new List<GComErrors>(),
+            };
+            var gatt = await device.GetGattServicesAsync().AsTask();
 
-        public async Task<List<GattCharacteristic>> PairToBleDevice(string deviceId)
+            // If we have any services...
+            if (gatt.Status == GattCommunicationStatus.Success)
+            {
+                List<GattCharacteristic> chRes = new List<GattCharacteristic>();
+                foreach (var service in gatt.Services)
+                {
+                    LogInfo("Discovered service " + service.Uuid);
+                    var chars = await service.GetCharacteristicsAsync().AsTask();
+                    if (chars.Status == GattCommunicationStatus.Success)
+                    {
+                        foreach (var ch in chars.Characteristics)
+                        {
+                            ret.Characters.Add(ch);
+                            LogInfo(" ===>  " + service.Uuid + " " + ch.Uuid);
+                        }
+                    }
+                    else
+                    {
+                        ret.Errors.Add(new GComErrors
+                        {
+                            uuid = service.Uuid.ToString(),
+                            Status = chars.Status,
+                        });
+                        LogInfo(" !====>  " + service.Uuid + " " + chars.Status);
+                    }
+                }
+            }
+            return ret;
+        }
+
+        public async Task<DevicePairingResultStatus> PairToBleDevice(string deviceId)
         {
             var device = await BluetoothLEDevice.FromIdAsync(deviceId).AsTask();
 
             if (device == null)
             {
                 LogInfo($"Pairing: No Device Found {deviceId}");
-                return null;
+                return DevicePairingResultStatus.Failed;
             }
 
             device.DeviceInformation.Pairing.Custom.PairingRequested += (s, args) =>
@@ -107,32 +162,7 @@ namespace WpfBlueTooth
             }
             else
                 LogInfo($"Pairing failed {result.Status}");
-
-            var gatt = await device.GetGattServicesAsync().AsTask();
-
-            // If we have any services...
-            if (gatt.Status == GattCommunicationStatus.Success)
-            {
-                List<GattCharacteristic> chRes = new List<GattCharacteristic>();
-                foreach (var service in gatt.Services)
-                {
-                    Console.WriteLine("Discovered service " + service.Uuid);
-                    var chars = await service.GetCharacteristicsAsync().AsTask();
-                    if (chars.Status == GattCommunicationStatus.Success)
-                    {
-                        foreach (var ch in chars.Characteristics)
-                        {
-                            chRes.Add(ch);
-                            Console.WriteLine(" ===>  " + service.Uuid + " " + ch.Uuid);
-                        }
-                    }else
-                    {
-                        Console.WriteLine(" !====>  " + service.Uuid + " " + chars.Status);
-                    }
-                }
-                return chRes;
-            }
-            return null;
+            return result.Status;
         }
     }
 }
