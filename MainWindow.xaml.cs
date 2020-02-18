@@ -68,6 +68,7 @@ namespace WpfBlueTooth
             await bu.PairToBleDevice(device.DeviceId).ContinueWith(async status =>
             {
                 Console.WriteLine("paired to dev " + device.ConnectionStatus);
+                foundDev = await bu.CheckDevice(foundDev.device.DeviceId);
                 var chars = foundDev.Characters;
                 
                 var ch = chars.Find(c => c.Uuid.ToString().StartsWith("0000ffe1"));
@@ -106,7 +107,7 @@ namespace WpfBlueTooth
                         Dsp("found ch");
                         Dsp("sending pt:180|");
                         await ch.WriteString("pt:180|");
-                        while (true)
+                        //while (true)
                         {
                             var st = await ch.ReadString();
                             //if (st == null) continue;
