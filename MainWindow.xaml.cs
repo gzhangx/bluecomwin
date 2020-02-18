@@ -9,6 +9,7 @@ using System.Linq;
 using Windows.Devices.Enumeration;
 using System.Collections.Generic;
 using Windows.Storage.Streams;
+using System.IO;
 
 namespace WpfBlueTooth
 {
@@ -24,6 +25,22 @@ namespace WpfBlueTooth
             InitializeComponent();
             bu = new BluetoothUtil(DevFound, OnError);
             bu.OnInfo = OnInfo;
+            /*
+            var devId = ReadConnectionStr();
+            bu.CheckDevice(devId).ContinueWith(async tret =>
+            {
+                foundDev = await tret;
+                if (foundDev == null)
+                {
+                    Dsp("Device not found, scan");
+                    bu.Scan();
+                }else
+                {
+                    Dsp("Device found, pair");
+                    await DoPair();
+                }
+            });
+            */
             bu.Scan();
         }
 
@@ -37,6 +54,23 @@ namespace WpfBlueTooth
             Console.WriteLine(exc);
         }
 
+
+        void SaveConnectionStr(string id)
+        {
+            File.WriteAllText(@"c:\temp\conn.txt", id);
+        }
+
+        string ReadConnectionStr()
+        {
+            try
+            {
+                return File.ReadAllText(@"c:\temp\conn.txt");
+            } catch
+            {
+                return "";
+            }
+        }
+
         bool found = false;
         BluetoothUtil.ServiceDiscoverRet foundDev = null;
         void DevFound(BluetoothUtil.ServiceDiscoverRet dev)
@@ -44,7 +78,8 @@ namespace WpfBlueTooth
             if (found) return;
             if (dev.device.Name == "MLT-BT05")
             {
-                lock(bu)
+                SaveConnectionStr(dev.device.DeviceId);
+                lock (bu)
                 {
                     if (found) return;
                     foundDev = dev;
@@ -56,7 +91,7 @@ namespace WpfBlueTooth
             }
         }
 
-        bool cfged = true;
+        bool cfged = false;
         private async Task DoPair()
         {
             if (foundDev == null) return;
@@ -65,7 +100,12 @@ namespace WpfBlueTooth
                 foundDev = await bu.CheckDevice(foundDev.device.DeviceId);
             }
             var device = foundDev.device;
-            await bu.PairToBleDevice(device.DeviceId).ContinueWith(async status =>
+            Dsp("connstatus " + device.ConnectionStatus.ToString());
+            //if (device.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
+            {
+                Console.WriteLine("pairing");
+                var pairStatus = await bu.PairToBleDevice(device.DeviceId);
+            }
             {
                 Console.WriteLine("paired to dev " + device.ConnectionStatus);
                 foundDev = await bu.CheckDevice(foundDev.device.DeviceId);
@@ -80,7 +120,7 @@ namespace WpfBlueTooth
                 Dsp("cfg tru");
                 try
                 {
-                    if (!cfged)
+                    //if (!cfged)
                     {
                         try
                         {
@@ -119,7 +159,7 @@ namespace WpfBlueTooth
                     Dsp(exc.Message);
                     Console.WriteLine(exc);
                 }
-            });
+            };
         }
 
         private void Ch_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)

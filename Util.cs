@@ -37,7 +37,7 @@ namespace WpfBlueTooth
                 var reader = DataReader.FromBuffer(buffer);
                 var input = new byte[reader.UnconsumedBufferLength];
                 reader.ReadBytes(input);
-                return BitConverter.ToString(input);
+                return Encoding.ASCII.GetString(input);
             }
             return "";
         }
