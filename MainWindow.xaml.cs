@@ -29,15 +29,16 @@ namespace WpfBlueTooth
             var devId = ReadConnectionStr();
             bu.CheckDevice(devId).ContinueWith(async tret =>
             {
-                foundDev = await tret;
+                var foundDev = await tret;
                 if (foundDev == null)
                 {
                     Dsp("Device not found, scan");
                     bu.Scan();
                 }else
                 {
+                    foundDev.device.Dispose();
                     Dsp("Device found, pair");
-                    await DoPair();
+                    await DoPair(devId);
                 }
             });
             
@@ -72,7 +73,6 @@ namespace WpfBlueTooth
         }
 
         bool found = false;
-        BluetoothUtil.ServiceDiscoverRet foundDev = null;
         void DevFound(BluetoothUtil.ServiceDiscoverRet dev)
         {
             if (found) return;
@@ -82,27 +82,24 @@ namespace WpfBlueTooth
                 lock (bu)
                 {
                     if (found) return;
-                    foundDev = dev;
                     found = true;
                 }
                 Dsp("found dev");
                 bu.StopScan();
-                DoPair();
+                DoPair(dev.device.DeviceId);
             }
         }
 
-        bool cfged = false;
         BluetoothUtil.BleChannel bleChannel;
-        private async Task DoPair()
+        private async Task DoPair(string deviceId)
         {
-            if (foundDev == null) return;
             if (bleChannel != null)
             {
                 bleChannel.Dispose();
             }
             try
             {
-                bleChannel = new BluetoothUtil.BleChannel(foundDev.device.DeviceId,"0000ffe1",str=>Dsp(str));
+                bleChannel = new BluetoothUtil.BleChannel(deviceId, "0000ffe1",str=>Dsp(str));
                 await bu.GetBleChannel(bleChannel);
             } catch (Exception err)
             {
@@ -119,69 +116,6 @@ namespace WpfBlueTooth
             bleChannel.OnReceive = str => Dsp(str);
             Dsp("Sending test");
             bleChannel.Send("test");
-            return;
-            var device = foundDev.device;
-            Dsp("connstatus " + device.ConnectionStatus.ToString());
-            device.Dispose();
-            if (device.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
-            {
-                Console.WriteLine("pairing");
-                var pairStatus = await bu.PairToBleDevice(device.DeviceId);
-            }
-            {
-                Console.WriteLine("paired to dev " + device.ConnectionStatus);
-                foundDev = await bu.CheckDevice(foundDev.device.DeviceId);
-                var chars = foundDev.Characters;
-                
-                var ch = chars.Find(c => c.Uuid.ToString().StartsWith("0000ffe1"));
-                if (ch == null)
-                {
-                    Dsp("no ch");
-                    return;
-                }
-                Dsp("cfg tru");
-                try
-                {
-                    //if (!cfged)
-                    {
-                        try
-                        {
-                            Dsp("cfg tru before trye");
-                            var cfg = await ch.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify).AsTask();
-                            if (cfg == GattCommunicationStatus.Success)
-                            {
-                                //cfged = true;
-                                Dsp("cfg good");
-                                ch.ValueChanged += Ch_ValueChanged;
-                            }
-                            else
-                            {
-                                Dsp("bad " + cfg);
-                            }
-                        } catch (Exception exc)
-                        {
-                            Console.WriteLine(exc.Message + " err cfg");
-                        }
-                    }
-
-                    if (ch != null)
-                    {
-                        Dsp("found ch");
-                        Dsp("sending pt:180|");
-                        await ch.WriteString("pt:180|");
-                        //while (true)
-                        {
-                            var st = await ch.ReadString();
-                            //if (st == null) continue;
-                            Dsp($"got '{st}'");
-                        }
-                    }
-                } catch (Exception exc)
-                {
-                    Dsp(exc.Message);
-                    Console.WriteLine(exc);
-                }
-            };
         }
 
         private void Ch_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
@@ -193,7 +127,7 @@ namespace WpfBlueTooth
 
         private void Test_Click(object sender, RoutedEventArgs e)
         {
-            DoPair();
+            DoPair(ReadConnectionStr());
         }
 
         void Dsp(string s)
