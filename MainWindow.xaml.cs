@@ -25,7 +25,7 @@ namespace WpfBlueTooth
             InitializeComponent();
             bu = new BluetoothUtil(DevFound, OnError);
             bu.OnInfo = OnInfo;
-            /*
+            
             var devId = ReadConnectionStr();
             bu.CheckDevice(devId).ContinueWith(async tret =>
             {
@@ -40,7 +40,7 @@ namespace WpfBlueTooth
                     await DoPair();
                 }
             });
-            */
+            
             bu.Scan();
         }
 
@@ -95,12 +95,10 @@ namespace WpfBlueTooth
         private async Task DoPair()
         {
             if (foundDev == null) return;
-            if (foundDev.Errors.Count > 0 || foundDev.Characters.Count == 0)
-            {
-                foundDev = await bu.CheckDevice(foundDev.device.DeviceId);
-            }
+            
             var device = foundDev.device;
             Dsp("connstatus " + device.ConnectionStatus.ToString());
+            device.Dispose();
             //if (device.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
             {
                 Console.WriteLine("pairing");
