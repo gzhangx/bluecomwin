@@ -92,14 +92,38 @@ namespace WpfBlueTooth
         }
 
         bool cfged = false;
+        BluetoothUtil.BleChannel bleChannel;
         private async Task DoPair()
         {
             if (foundDev == null) return;
-            
+            if (bleChannel != null)
+            {
+                bleChannel.Dispose();
+            }
+            try
+            {
+                bleChannel = new BluetoothUtil.BleChannel(foundDev.device.DeviceId,"0000ffe1",str=>Dsp(str));
+                await bu.GetBleChannel(bleChannel);
+            } catch (Exception err)
+            {
+                Dsp(err.Message);
+                Console.WriteLine(err);
+            }
+            if (bleChannel.ErrorMsg != null)
+            {
+                Dsp(bleChannel.ErrorMsg);
+                return;
+            }
+
+
+            bleChannel.OnReceive = str => Dsp(str);
+            Dsp("Sending test");
+            bleChannel.Send("test");
+            return;
             var device = foundDev.device;
             Dsp("connstatus " + device.ConnectionStatus.ToString());
             device.Dispose();
-            //if (device.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
+            if (device.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
             {
                 Console.WriteLine("pairing");
                 var pairStatus = await bu.PairToBleDevice(device.DeviceId);

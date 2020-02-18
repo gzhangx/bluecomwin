@@ -170,5 +170,72 @@ namespace WpfBlueTooth
             
             return result.Status;
         }
+
+
+        public class BleChannel : IDisposable
+        {
+            public BleChannel(string deviceId, string uuid, Action<string> receive)
+            {
+                DeviceId = deviceId;
+                UUID = uuid;
+                OnReceive = receive;
+            }
+            public Action<string> OnReceive { get; set; }
+            public string DeviceId { get; set; }
+            public string UUID;
+            public Action<string> Send { get; set; }
+
+            public ServiceDiscoverRet service { private get; set; }
+            public string ErrorMsg { get; set; }
+            public void Dispose()
+            {
+                if (service != null && service.device != null)
+                    service.device.Dispose();
+                service = null;
+            }
+        }
+
+        public async Task GetBleChannel(BleChannel input)
+        {
+            var deviceId = input.DeviceId;
+            await PairToBleDevice(deviceId);
+            var foundDev = await CheckDevice(deviceId);
+            if (foundDev == null)
+            {
+                LogInfo("Device not found");
+                input.ErrorMsg = "Device not found";
+                return;
+            }
+            input.service = foundDev;
+            var chars = foundDev.Characters;
+
+            var ch = chars.Find(c => c.Uuid.ToString().StartsWith(input.UUID));
+            if (ch == null)
+            {
+                LogInfo("CharUUID not fouhnd");
+                input.ErrorMsg = "CharUUID not found";
+                input.Dispose();
+                return;
+            }
+            try
+            {
+                var cfg = await ch.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue.Notify).AsTask();
+                if (cfg == GattCommunicationStatus.Success)
+                {
+                    ch.ValueChanged += (snd,args)=>
+                    {
+                        var r = args.CharacteristicValue.ReadAsString();
+                        input.OnReceive?.Invoke(r);
+                    };
+                }
+                input.Send = s => ch.WriteString(s);
+            }
+            catch (Exception exc)
+            {
+                onError?.Invoke("Config Error", exc);
+                input.ErrorMsg = "Config Error";
+                input.Dispose();
+            }
+        }
     }
 }
