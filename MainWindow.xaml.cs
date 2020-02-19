@@ -237,6 +237,7 @@ namespace WpfBlueTooth
                     if (oldKi != val)
                     {
                         oldKi = val;
+                        SendCmd("ki", val.ToString());
                     }
                 }
 
@@ -245,6 +246,7 @@ namespace WpfBlueTooth
                     if (oldKd != val)
                     {
                         oldKd = val;
+                        SendCmd("kd", val.ToString());
                     }
                 }
             }
@@ -277,7 +279,6 @@ namespace WpfBlueTooth
             if (txtKi != null)
             {
                 txtKi.Text = val.ToString("0.0000");
-                SendCmd("ki", val.ToString());
             }
         }
 
@@ -288,7 +289,6 @@ namespace WpfBlueTooth
             if (txtKd != null)
             {
                 txtKd.Text = val.ToString("0.0000");
-                SendCmd("kd", val.ToString());
             }
         }
 
