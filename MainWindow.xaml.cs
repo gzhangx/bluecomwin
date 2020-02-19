@@ -160,7 +160,7 @@ namespace WpfBlueTooth
                 Dsp(err.Message);
                 Console.WriteLine(err);
             }
-            if (bleChannel.ErrorMsg != null)
+            if (bleChannel != null && bleChannel.ErrorMsg != null)
             {
                 Dsp(bleChannel.ErrorMsg);
                 bleChannel.Dispose();
