@@ -72,17 +72,25 @@ namespace WpfBlueTooth
             Console.WriteLine(exc);
         }
 
-
+        string GetSaveFileName()
+        {
+            var dir = System.IO.Path.GetDirectoryName(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName);
+            return Path.Combine(dir, "conn.txt");
+        }
         void SaveConnectionStr(string id)
         {
-            File.WriteAllText(@"c:\temp\conn.txt", id);
+            try
+            {
+                File.WriteAllText(GetSaveFileName(), id);
+            }
+            catch { }
         }
 
         string ReadConnectionStr()
         {
             try
             {
-                return File.ReadAllText(@"c:\temp\conn.txt");
+                return File.ReadAllText(GetSaveFileName());
             } catch
             {
                 return "";
