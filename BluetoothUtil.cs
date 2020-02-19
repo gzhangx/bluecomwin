@@ -107,6 +107,7 @@ namespace WpfBlueTooth
 
         public async Task<bool> IsDeviceHere(string deviceId)
         {
+            if (String.IsNullOrEmpty(deviceId)) return false;
             using(var device = await BluetoothLEDevice.FromIdAsync(deviceId).AsTask())
             {
                 return device != null;
