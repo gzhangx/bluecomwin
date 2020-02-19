@@ -13,6 +13,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="120"/>
             <RowDefinition />
+            <RowDefinition Height="40"/>
             <RowDefinition Height="60"/>
         </Grid.RowDefinitions>
         <Grid>
@@ -26,17 +27,20 @@
                 <RowDefinition/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
-            <Slider x:Name="sliderSetPoint" Minimum="0" Maximum="360" Value="180" ValueChanged="SliderSetPoint_ValueChanged" Margin="4"></Slider>
+            <Slider x:Name="sliderSetPoint" Minimum="0" Maximum="360" Value="0" ValueChanged="SliderSetPoint_ValueChanged" Margin="4"></Slider>
             <TextBox x:Name="txtSetPoint" Grid.Row="0" Grid.Column="1" Margin="4"></TextBox>
-            <Slider x:Name="sliderKp" Minimum="0" Maximum="600" Value="180" ValueChanged="SliderKp_ValueChanged" Grid.Row="1" Margin="4"></Slider>
+            <Slider x:Name="sliderKp" Minimum="0" Maximum="600" Value="0" ValueChanged="SliderKp_ValueChanged" Grid.Row="1" Margin="4"></Slider>
             <TextBox x:Name="txtKp" Grid.Row="1" Grid.Column="1" Margin="4"></TextBox>
-            <Slider x:Name="sliderKi" Minimum="0" Maximum="1000" Value="1" ValueChanged="SliderKi_ValueChanged" Grid.Row="2" Margin="4"></Slider>
+            <Slider x:Name="sliderKi" Minimum="0" Maximum="1000" Value="0" ValueChanged="SliderKi_ValueChanged" Grid.Row="2" Margin="4"></Slider>
             <TextBox x:Name="txtKi" Grid.Row="2" Grid.Column="1" Margin="4"></TextBox>
-            <Slider x:Name="sliderKd" Minimum="0" Maximum="1000" Value="1" ValueChanged="SliderKd_ValueChanged" Grid.Row="3" Margin="4"></Slider>
+            <Slider x:Name="sliderKd" Minimum="0" Maximum="1000" Value="0" ValueChanged="SliderKd_ValueChanged" Grid.Row="3" Margin="4"></Slider>
             <TextBox x:Name="txtKd" Grid.Row="3" Grid.Column="1" Margin="4"></TextBox>
         </Grid>
-        <TextBox x:Name="txtInfo" MaxLines="20" Grid.Row="1"></TextBox>
-        <StackPanel Grid.Column="0" Grid.Row="2" Orientation="Horizontal">
+        <ScrollViewer  Grid.Row="1">
+            <TextBox x:Name="txtInfo" MaxLines="20" Grid.Row="1"></TextBox>
+        </ScrollViewer>
+        <TextBox x:Name="txtAdr" MaxLines="20" Grid.Row="2"></TextBox>
+        <StackPanel Grid.Column="0" Grid.Row="3" Orientation="Horizontal">
             <Button  x:Name="btnPair" Click="Pair_ClickAsync" Margin="4">Pair</Button>
             <Button  x:Name="btnSend" Click="BtnSend_Click" Margin="4">Send</Button>
         </StackPanel>

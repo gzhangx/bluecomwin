@@ -27,6 +27,10 @@ namespace WpfBlueTooth
             InitializeComponent();
             bu = new BluetoothUtil(DevFound, OnError);
             bu.OnInfo = OnInfo;
+            sliderSetPoint.Value = 180;
+            sliderKp.Value = 200;
+            sliderKi.Value = 0.15;
+            sliderKd.Value = 0.01;
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -142,7 +146,7 @@ namespace WpfBlueTooth
                     }
                     else
                     {
-                        Dsp(str);
+                        BlueDsp(str);
                     }
                 });
                 await bu.GetBleChannel(newChannel);
@@ -170,13 +174,6 @@ namespace WpfBlueTooth
             //bleChannel.Send("started");
         }
 
-        private void Ch_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
-        {
-           var r = args.CharacteristicValue.ReadAsString();
-            Console.WriteLine("rrrrr !!!! " + r);
-            Dsp("from cb"+r);
-        }
-
         private async void Pair_ClickAsync(object sender, RoutedEventArgs e)
         {
             await DoPair(ReadConnectionStr());
@@ -186,11 +183,23 @@ namespace WpfBlueTooth
         {
             Dispatcher.BeginInvoke(new Action(act));
         }
+
+        void BlueDsp(string s)
+        {
+            DspAct(() =>
+            {
+                txtAdr.Text = s;
+            });
+            Dsp(s);
+        }
         void Dsp(string s)
         {
             DspAct(() =>
             {
                 txtInfo.Text = txtInfo.Text+"\n"+s;
+                txtInfo.Focus();
+                txtInfo.CaretIndex = txtInfo.Text.Length;
+                txtInfo.ScrollToEnd();
             });
         }
 
