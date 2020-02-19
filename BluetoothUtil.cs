@@ -69,21 +69,23 @@ namespace WpfBlueTooth
                     }
                 }
 
-                ServiceDiscoverRet devd = null;
+                
                 using (var device = await BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress).AsTask())
                 {
                     if (device == null)
                         return;
-
-                    devd = await CheckDevice(device);
-                    if (devd.Errors.Count > 0) LogInfo("Has Errors!!!!!");
+                    ServiceDiscoverRet devd = new ServiceDiscoverRet
+                    {
+                        device = device,
+                    };
+                    OnDeviceFound?.Invoke(devd);
+                    lock (foundDevs)
+                    {
+                        if (!foundDevs.ContainsKey(args.BluetoothAddress))
+                            foundDevs.Add(args.BluetoothAddress, devd);
+                    }
                 }
-                OnDeviceFound?.Invoke(devd);
-                lock (foundDevs)
-                {
-                    if (!foundDevs.ContainsKey(args.BluetoothAddress))
-                        foundDevs.Add(args.BluetoothAddress, devd);
-                }
+                
 
 
             }
@@ -93,14 +95,17 @@ namespace WpfBlueTooth
             }
         }
 
+        public async Task<bool> IsDeviceHere(string deviceId)
+        {
+            using(var device = await BluetoothLEDevice.FromIdAsync(deviceId).AsTask())
+            {
+                return device != null;
+            }
+        }
         public async Task<ServiceDiscoverRet> CheckDevice(string deviceId)
         {
             if (String.IsNullOrEmpty(deviceId)) return null;
             var device = await BluetoothLEDevice.FromIdAsync(deviceId).AsTask();
-            return await CheckDevice(device);
-        }
-        protected async Task<ServiceDiscoverRet> CheckDevice(BluetoothLEDevice device)
-        {
             if (device == null) return null;
             ServiceDiscoverRet ret = new ServiceDiscoverRet
             {
@@ -192,7 +197,17 @@ namespace WpfBlueTooth
             public void Dispose()
             {
                 if (service != null && service.device != null)
+                {
                     service.device.Dispose();
+                    service.Characters.ForEach(c =>
+                    {
+                        try
+                        {
+                            c.Service.Dispose();
+                        }
+                        catch { }
+                    });
+                }
                 service = null;
             }
         }
@@ -229,6 +244,9 @@ namespace WpfBlueTooth
                         var r = args.CharacteristicValue.ReadAsString();
                         input.OnReceive?.Invoke(r);
                     };
+                }else
+                {
+                    LogInfo("CharConfig Failed");
                 }
                 input.Send = s => ch.WriteString(s);
             }

@@ -16,6 +16,10 @@
             <RowDefinition Height="50"/>
         </Grid.RowDefinitions>
         <TextBox x:Name="txtInfo" MaxLines="20" ></TextBox>
-        <Button Grid.Column="0" Grid.Row="1" x:Name="test" Click="Test_Click"></Button>
+        <StackPanel Grid.Column="0" Grid.Row="1" Orientation="Horizontal">
+            <Button  x:Name="test" Click="Test_Click" Margin="2">Pair</Button>
+            <Button  x:Name="btnSend" Click="BtnSend_Click" Margin="2">Send</Button>
+        </StackPanel>
+        
     </Grid>
 </Window>

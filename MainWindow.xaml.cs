@@ -27,16 +27,15 @@ namespace WpfBlueTooth
             bu.OnInfo = OnInfo;
             
             var devId = ReadConnectionStr();
-            bu.CheckDevice(devId).ContinueWith(async tret =>
+            bu.IsDeviceHere(devId).ContinueWith(async tret =>
             {
-                var foundDev = await tret;
-                if (foundDev == null)
+                bool foundDev = await tret;
+                if (!foundDev)
                 {
                     Dsp("Device not found, scan");
                     bu.Scan();
                 }else
                 {
-                    foundDev.device.Dispose();
                     Dsp("Device found, pair");
                     await DoPair(devId);
                 }
@@ -109,9 +108,12 @@ namespace WpfBlueTooth
             if (bleChannel.ErrorMsg != null)
             {
                 Dsp(bleChannel.ErrorMsg);
+                bleChannel.Dispose();
+                bleChannel = null;
+                btnSend.IsEnabled = false;
                 return;
             }
-
+            btnSend.IsEnabled = true;
 
             bleChannel.OnReceive = str => Dsp(str);
             Dsp("Sending test");
@@ -136,6 +138,14 @@ namespace WpfBlueTooth
             {
                 txtInfo.Text = txtInfo.Text+"\n"+s;
             }));
+        }
+
+        private void BtnSend_Click(object sender, RoutedEventArgs e)
+        {
+            if (bleChannel != null)
+            {
+                bleChannel.Send("test1");
+            }
         }
     }
 }
