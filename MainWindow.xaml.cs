@@ -40,8 +40,6 @@ namespace WpfBlueTooth
                     await DoPair(devId);
                 }
             });
-            
-            bu.Scan();
         }
 
         void OnInfo(string s)
@@ -92,6 +90,7 @@ namespace WpfBlueTooth
         BluetoothUtil.BleChannel bleChannel;
         private async Task DoPair(string deviceId)
         {
+            Dsp("pairing dev");
             if (bleChannel != null)
             {
                 bleChannel.Dispose();
