@@ -201,9 +201,9 @@ namespace WpfBlueTooth
                 UUID = uuid;
                 OnReceive = receive;
             }
-            public Action<string> OnReceive { get; set; }
-            public string DeviceId { get; set; }
-            public string UUID;
+            public Action<string> OnReceive { get; private set; }
+            public string DeviceId { get; private set; }
+            public string UUID { get; private set; }
             public Action<string> Send { get; set; }
 
             public ServiceDiscoverRet service { get; set; }
@@ -259,6 +259,17 @@ namespace WpfBlueTooth
                 {
                     LogInfo("CharConfig Failed");
                 }
+                ch.Service.Session.SessionStatusChanged += (snd, arg) =>
+                {
+                    if (snd.SessionStatus == GattSessionStatus.Closed)
+                    {
+                        if (input.service != null)
+                        {
+                            input.Dispose();
+                            input.OnReceive(null);
+                        }
+                    }
+                };
                 input.Send = s => ch.WriteString(s);
             }
             catch (Exception exc)

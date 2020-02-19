@@ -104,7 +104,28 @@ namespace WpfBlueTooth
             }
             try
             {
-                var newChannel = new BluetoothUtil.BleChannel(deviceId, "0000ffe1",str=>Dsp(str));
+                var newChannel = new BluetoothUtil.BleChannel(deviceId, "0000ffe1",str=>
+                {
+                    if (str == null)
+                    {
+                        Dsp("connection closed");
+                        try
+                        {
+                            bleChannel.Dispose();
+                        } catch
+                        {
+                            Console.WriteLine("err in dispose");
+                        }
+                        bleChannel = null;
+                        DspAct(() => {
+                            btnSend.IsEnabled = false;
+                        });
+                    }
+                    else
+                    {
+                        Dsp(str);
+                    }
+                });
                 await bu.GetBleChannel(newChannel);
                 bleChannel = newChannel;
                 if (bleChannel.service == null && bleChannel.ErrorMsg == null)
@@ -127,8 +148,7 @@ namespace WpfBlueTooth
             DspAct(() => {
                 btnSend.IsEnabled = true;
             });
-
-            bleChannel.OnReceive = str => Dsp(str);
+            
             Dsp("Sending test");
             bleChannel.Send("started");
         }
