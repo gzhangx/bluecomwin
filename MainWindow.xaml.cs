@@ -10,6 +10,7 @@ using Windows.Devices.Enumeration;
 using System.Collections.Generic;
 using Windows.Storage.Streams;
 using System.IO;
+using System.Windows.Threading;
 
 namespace WpfBlueTooth
 {
@@ -19,6 +20,7 @@ namespace WpfBlueTooth
     public partial class MainWindow : Window
     {
         BluetoothUtil bu;
+        DispatcherTimer tmr = new DispatcherTimer();
         public MainWindow()
         {
 
@@ -44,6 +46,16 @@ namespace WpfBlueTooth
                     await DoPair(devId);
                 }
             });
+
+            
+            tmr.Interval = new TimeSpan(0, 0, 0, 0, 300);
+            tmr.Tick += Tmr_Tick;
+            tmr.Start();
+        }
+
+        private void Tmr_Tick(object sender, EventArgs e)
+        {
+            DataSender();
         }
 
         void OnInfo(string s)
@@ -91,13 +103,22 @@ namespace WpfBlueTooth
             }
         }
 
+        void EnableDisable(bool enable)
+        {
+            DspAct(() =>
+            {
+                //sliderSetPoint.IsEnabled = enable;
+                //sliderKp.IsEnabled = enable;
+                //sliderKi.IsEnabled = enable;
+                //sliderKd.IsEnabled = enable;
+                btnSend.IsEnabled = enable;
+            });
+        }
         BluetoothUtil.BleChannel bleChannel;
         private async Task DoPair(string deviceId)
         {
             Dsp("pairing dev");
-            DspAct(() => {
-                btnSend.IsEnabled = false;
-            });
+            EnableDisable(false);
             if (bleChannel != null)
             {
                 bleChannel.Dispose();
@@ -117,9 +138,7 @@ namespace WpfBlueTooth
                             Console.WriteLine("err in dispose");
                         }
                         bleChannel = null;
-                        DspAct(() => {
-                            btnSend.IsEnabled = false;
-                        });
+                        EnableDisable(false);
                     }
                     else
                     {
@@ -145,12 +164,10 @@ namespace WpfBlueTooth
                 btnSend.IsEnabled = false;
                 return;
             }
-            DspAct(() => {
-                btnSend.IsEnabled = true;
-            });
-            
+            EnableDisable(true);
+
             Dsp("Sending test");
-            bleChannel.Send("started");
+            //bleChannel.Send("started");
         }
 
         private void Ch_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
@@ -177,14 +194,107 @@ namespace WpfBlueTooth
             });
         }
 
-        private void BtnSend_Click(object sender, RoutedEventArgs e)
+        void SendBle(string s)
         {
             if (bleChannel != null)
             {
-                bleChannel.Send("test1");
+                bleChannel.Send(s);
+            }
+        }
+        private void BtnSend_Click(object sender, RoutedEventArgs e)
+        {
+            SendBle("testtest");
+        }
+
+        void SendCmd(string cmd, string val)
+        {
+            SendBle($"{cmd}:{val}|");
+        }
+
+        void DataSender()
+        {
+            if (bleChannel != null && sliderSetPoint != null)
+            {
+                {
+                    int val = ((int)sliderSetPoint.Value);
+                    if (oldSetpoint != val)
+                    {
+                        oldSetpoint = val;
+                        SendCmd("sp", val.ToString());
+                    }
+                }
+                {
+                    int val = ((int)sliderKp.Value);
+                    if (oldKp != val)
+                    {
+                        oldKp = val;
+                        SendCmd("kp", val.ToString());
+                    }
+                }
+
+                {
+                    var val = sliderKi.Value / 100;
+                    if (oldKi != val)
+                    {
+                        oldKi = val;
+                    }
+                }
+
+                {
+                    var val = sliderKd.Value / 100;
+                    if (oldKd != val)
+                    {
+                        oldKd = val;
+                    }
+                }
+            }
+        }
+        int oldSetpoint = -1;
+        private void SliderSetPoint_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            int val = ((int)sliderSetPoint.Value);
+            if (txtSetPoint != null)
+            {
+                txtSetPoint.Text = val.ToString();
             }
         }
 
-        
+        int oldKp = -1;
+        private void SliderKp_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (txtKp != null)
+            {
+                int val = ((int)sliderKp.Value);
+                txtKp.Text = val.ToString();
+                
+            }
+        }
+
+        double oldKi = -1;
+        private void SliderKi_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            var val = sliderKi.Value/100;
+            if (txtKi != null)
+            {
+                txtKi.Text = val.ToString("0.0000");
+                SendCmd("ki", val.ToString());
+            }
+        }
+
+        double oldKd = -1;
+        private void SliderKd_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            var val = sliderKd.Value / 100;
+            if (txtKd != null)
+            {
+                txtKd.Text = val.ToString("0.0000");
+                SendCmd("kd", val.ToString());
+            }
+        }
+
+        private void Window_Unloaded(object sender, RoutedEventArgs e)
+        {
+            tmr.Stop();
+        }
     }
 }
