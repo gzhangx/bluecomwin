@@ -14,11 +14,21 @@ namespace WpfBlueTooth
 {
     public class BluetoothUtil
     {
-        public class ServiceDiscoverRet
+        public class ServiceDiscoverRet : IDisposable
         {
             public BluetoothLEDevice device { get; set; }
             public List<GattCharacteristic> Characters { get; set; }
+            public List<GattDeviceService> Services { get; set; }
             public List<GComErrors> Errors { get; set; }
+
+            public void Dispose()
+            {
+                if (device != null)
+                {
+                    if (Services != null) Services.ForEach(s => s.Dispose());
+                    device.Dispose();
+                }
+            }
         }
         public class GComErrors
         {
@@ -111,6 +121,7 @@ namespace WpfBlueTooth
             {
                 device = device,
                 Characters = new List<GattCharacteristic>(),
+                Services = new List<GattDeviceService>(),
                 Errors = new List<GComErrors>(),
             };
             var gatt = await device.GetGattServicesAsync().AsTask();
@@ -122,6 +133,7 @@ namespace WpfBlueTooth
                 foreach (var service in gatt.Services)
                 {
                     LogInfo("Discovered service " + service.Uuid);
+                    ret.Services.Add(service);
                     var chars = await service.GetCharacteristicsAsync().AsTask();
                     if (chars.Status == GattCommunicationStatus.Success)
                     {
@@ -196,17 +208,9 @@ namespace WpfBlueTooth
             public string ErrorMsg { get; set; }
             public void Dispose()
             {
-                if (service != null && service.device != null)
+                if (service != null)
                 {
-                    service.device.Dispose();
-                    service.Characters.ForEach(c =>
-                    {
-                        try
-                        {
-                            c.Service.Dispose();
-                        }
-                        catch { }
-                    });
+                    service.Dispose();
                 }
                 service = null;
             }
