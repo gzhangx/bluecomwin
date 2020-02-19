@@ -42,11 +42,12 @@ namespace WpfBlueTooth
             return "";
         }
 
-        public static Task WriteString(this GattCharacteristic ch, string str )
+        public static async Task<GattCommunicationStatus> WriteString(this GattCharacteristic ch, string str )
         {
             var writer = new DataWriter();
             writer.WriteBytes(Encoding.ASCII.GetBytes(str));
-            return ch.WriteValueAsync(writer.DetachBuffer()).AsTask();
+            var rs = await ch.WriteValueAsync(writer.DetachBuffer()).AsTask();            
+            return rs;
         }
 
         public static async Task<string> ReadString(this GattCharacteristic ch)

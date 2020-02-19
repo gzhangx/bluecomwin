@@ -211,24 +211,26 @@ namespace WpfBlueTooth
             });
         }
 
-        void SendBle(string s)
+        async Task<GattCommunicationStatus> SendBle(string s)
         {
             if (bleChannel != null)
             {
-                bleChannel.Send(s);
+                return await bleChannel.Send(s);
             }
+            return GattCommunicationStatus.Unreachable;
         }
-        private void BtnSend_Click(object sender, RoutedEventArgs e)
+        private async void BtnSend_Click(object sender, RoutedEventArgs e)
         {
-            SendBle("testtest");
+            var res = await SendBle("testtest");
+            Dsp(res.ToString());
         }
 
-        void SendCmd(string cmd, string val)
+        Task<GattCommunicationStatus> SendCmd(string cmd, string val)
         {
-            SendBle($"{cmd}:{val}|");
+            return SendBle($"{cmd}:{val}|");
         }
 
-        void DataSender()
+        async void DataSender()
         {
             if (bleChannel != null && sliderSetPoint != null)
             {
@@ -237,7 +239,8 @@ namespace WpfBlueTooth
                     if (oldSetpoint != val)
                     {
                         oldSetpoint = val;
-                        SendCmd("sp", val.ToString());
+                        var res = await SendCmd("sp", val.ToString());
+                        Dsp(res.ToString());
                     }
                 }
                 {
@@ -245,7 +248,8 @@ namespace WpfBlueTooth
                     if (oldKp != val)
                     {
                         oldKp = val;
-                        SendCmd("kp", val.ToString());
+                        var res = await SendCmd("kp", val.ToString());
+                        Dsp(res.ToString());
                     }
                 }
 
@@ -254,7 +258,8 @@ namespace WpfBlueTooth
                     if (oldKi != val)
                     {
                         oldKi = val;
-                        SendCmd("ki", val.ToString());
+                        var res = await SendCmd("ki", val.ToString());
+                        Dsp(res.ToString());
                     }
                 }
 
@@ -263,7 +268,8 @@ namespace WpfBlueTooth
                     if (oldKd != val)
                     {
                         oldKd = val;
-                        SendCmd("kd", val.ToString());
+                        var res = await SendCmd("kd", val.ToString());
+                        Dsp(res.ToString());
                     }
                 }
             }

@@ -205,7 +205,7 @@ namespace WpfBlueTooth
             public Action<string> OnReceive { get; private set; }
             public string DeviceId { get; private set; }
             public string UUID { get; private set; }
-            public Action<string> Send { get; set; }
+            public Func<string, Task<GattCommunicationStatus>> Send { get; set; }
 
             public ServiceDiscoverRet service { get; set; }
             public string ErrorMsg { get; set; }
