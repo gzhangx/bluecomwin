@@ -69,14 +69,15 @@ namespace WpfBlueTooth
                     }
                 }
 
-                var device = await BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress).AsTask();
-                if (device == null)
-                    return;
-
                 ServiceDiscoverRet devd = null;
+                using (var device = await BluetoothLEDevice.FromBluetoothAddressAsync(args.BluetoothAddress).AsTask())
+                {
+                    if (device == null)
+                        return;
+
                     devd = await CheckDevice(device);
                     if (devd.Errors.Count > 0) LogInfo("Has Errors!!!!!");
-                
+                }
                 OnDeviceFound?.Invoke(devd);
                 lock (foundDevs)
                 {
@@ -84,7 +85,7 @@ namespace WpfBlueTooth
                         foundDevs.Add(args.BluetoothAddress, devd);
                 }
 
-                
+
             }
             catch (Exception exc)
             {
@@ -94,6 +95,7 @@ namespace WpfBlueTooth
 
         public async Task<ServiceDiscoverRet> CheckDevice(string deviceId)
         {
+            if (String.IsNullOrEmpty(deviceId)) return null;
             var device = await BluetoothLEDevice.FromIdAsync(deviceId).AsTask();
             return await CheckDevice(device);
         }
