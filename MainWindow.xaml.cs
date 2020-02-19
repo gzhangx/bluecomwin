@@ -25,7 +25,10 @@ namespace WpfBlueTooth
             InitializeComponent();
             bu = new BluetoothUtil(DevFound, OnError);
             bu.OnInfo = OnInfo;
-            
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
             var devId = ReadConnectionStr();
             bu.IsDeviceHere(devId).ContinueWith(async tret =>
             {
@@ -34,7 +37,8 @@ namespace WpfBlueTooth
                 {
                     Dsp("Device not found, scan");
                     bu.Scan();
-                }else
+                }
+                else
                 {
                     Dsp("Device found, pair");
                     await DoPair(devId);
@@ -70,7 +74,7 @@ namespace WpfBlueTooth
         }
 
         bool found = false;
-        void DevFound(BluetoothUtil.ServiceDiscoverRet dev)
+        async void DevFound(BluetoothUtil.ServiceDiscoverRet dev)
         {
             if (found) return;
             if (dev.device.Name == "MLT-BT05")
@@ -83,7 +87,7 @@ namespace WpfBlueTooth
                 }
                 Dsp("found dev");
                 bu.StopScan();
-                DoPair(dev.device.DeviceId);
+                await DoPair(dev.device.DeviceId);
             }
         }
 
@@ -91,14 +95,22 @@ namespace WpfBlueTooth
         private async Task DoPair(string deviceId)
         {
             Dsp("pairing dev");
+            DspAct(() => {
+                btnSend.IsEnabled = false;
+            });
             if (bleChannel != null)
             {
                 bleChannel.Dispose();
             }
             try
             {
-                bleChannel = new BluetoothUtil.BleChannel(deviceId, "0000ffe1",str=>Dsp(str));
-                await bu.GetBleChannel(bleChannel);
+                var newChannel = new BluetoothUtil.BleChannel(deviceId, "0000ffe1",str=>Dsp(str));
+                await bu.GetBleChannel(newChannel);
+                bleChannel = newChannel;
+                if (bleChannel.service == null && bleChannel.ErrorMsg == null)
+                {
+                    bleChannel.ErrorMsg = "Device not found";
+                }
             } catch (Exception err)
             {
                 Dsp(err.Message);
@@ -112,11 +124,13 @@ namespace WpfBlueTooth
                 btnSend.IsEnabled = false;
                 return;
             }
-            btnSend.IsEnabled = true;
+            DspAct(() => {
+                btnSend.IsEnabled = true;
+            });
 
             bleChannel.OnReceive = str => Dsp(str);
             Dsp("Sending test");
-            bleChannel.Send("test");
+            bleChannel.Send("started");
         }
 
         private void Ch_ValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)
@@ -126,17 +140,21 @@ namespace WpfBlueTooth
             Dsp("from cb"+r);
         }
 
-        private void Test_Click(object sender, RoutedEventArgs e)
+        private async void Pair_ClickAsync(object sender, RoutedEventArgs e)
         {
-            DoPair(ReadConnectionStr());
+            await DoPair(ReadConnectionStr());
         }
 
+        void DspAct(Action act)
+        {
+            Dispatcher.BeginInvoke(new Action(act));
+        }
         void Dsp(string s)
         {
-            Dispatcher.BeginInvoke(new Action(() =>
+            DspAct(() =>
             {
                 txtInfo.Text = txtInfo.Text+"\n"+s;
-            }));
+            });
         }
 
         private void BtnSend_Click(object sender, RoutedEventArgs e)
@@ -146,5 +164,7 @@ namespace WpfBlueTooth
                 bleChannel.Send("test1");
             }
         }
+
+        
     }
 }

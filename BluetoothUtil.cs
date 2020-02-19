@@ -159,35 +159,37 @@ namespace WpfBlueTooth
 
         public async Task<DevicePairingResultStatus> PairToBleDevice(string deviceId)
         {
-            var device = await BluetoothLEDevice.FromIdAsync(deviceId).AsTask();
-
-            if (device == null)
+            using (var device = await BluetoothLEDevice.FromIdAsync(deviceId).AsTask())
             {
-                LogInfo($"Pairing: No Device Found {deviceId}");
-                return DevicePairingResultStatus.Failed;
+
+                if (device == null)
+                {
+                    LogInfo($"Pairing: No Device Found {deviceId}");
+                    return DevicePairingResultStatus.Failed;
+                }
+
+                device.DeviceInformation.Pairing.Custom.PairingRequested += (s, args) =>
+                {
+                    LogInfo("Accept pairing");
+                    args.Accept();
+                };
+
+                var result = await device.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly).AsTask();
+
+                if (result.Status == DevicePairingResultStatus.Paired)
+                {
+                    LogInfo("Pairing successful");
+                }
+                else
+                {
+                    LogInfo($"Pairing failed {result.Status} canPair = {device.DeviceInformation.Pairing.CanPair}");
+                    var ups = await device.DeviceInformation.Pairing.UnpairAsync().AsTask();
+                    LogInfo($"Unpair {ups}");
+
+                }
+
+                return result.Status;
             }
-
-            device.DeviceInformation.Pairing.Custom.PairingRequested += (s, args) =>
-            {
-                LogInfo("Accept pairing");
-                args.Accept();
-            };
-
-            var result = await device.DeviceInformation.Pairing.Custom.PairAsync(DevicePairingKinds.ConfirmOnly).AsTask();
-
-            if (result.Status == DevicePairingResultStatus.Paired)
-            {
-                LogInfo("Pairing successful");
-            }
-            else
-            {
-                LogInfo($"Pairing failed {result.Status} canPair = {device.DeviceInformation.Pairing.CanPair}");
-                var ups = await device.DeviceInformation.Pairing.UnpairAsync().AsTask();
-                LogInfo($"Unpair {ups}");
-
-            }
-            
-            return result.Status;
         }
 
 
@@ -204,7 +206,7 @@ namespace WpfBlueTooth
             public string UUID;
             public Action<string> Send { get; set; }
 
-            public ServiceDiscoverRet service { private get; set; }
+            public ServiceDiscoverRet service { get; set; }
             public string ErrorMsg { get; set; }
             public void Dispose()
             {
@@ -219,7 +221,12 @@ namespace WpfBlueTooth
         public async Task GetBleChannel(BleChannel input)
         {
             var deviceId = input.DeviceId;
-            await PairToBleDevice(deviceId);
+            var pairRes = await PairToBleDevice(deviceId);
+            if (pairRes == DevicePairingResultStatus.Failed)
+            {
+                input.ErrorMsg = "Device not found or pairing failed";
+                return;
+            }
             var foundDev = await CheckDevice(deviceId);
             if (foundDev == null)
             {

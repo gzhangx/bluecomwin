@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WpfBlueTooth"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="MainWindow" Height="450" Width="800" Loaded="Window_Loaded">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
@@ -17,7 +17,7 @@
         </Grid.RowDefinitions>
         <TextBox x:Name="txtInfo" MaxLines="20" ></TextBox>
         <StackPanel Grid.Column="0" Grid.Row="1" Orientation="Horizontal">
-            <Button  x:Name="test" Click="Test_Click" Margin="2">Pair</Button>
+            <Button  x:Name="btnPair" Click="Pair_ClickAsync" Margin="2">Pair</Button>
             <Button  x:Name="btnSend" Click="BtnSend_Click" Margin="2">Send</Button>
         </StackPanel>
         
