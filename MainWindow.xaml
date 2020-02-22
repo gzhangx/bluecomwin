@@ -16,7 +16,7 @@
             <RowDefinition Height="40"/>
             <RowDefinition Height="60"/>
         </Grid.RowDefinitions>
-        <Grid>
+        <Grid x:Name="gridBalance" Visibility="Hidden">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition/>
                 <ColumnDefinition Width="200"/>
@@ -36,6 +36,20 @@
             <Slider x:Name="sliderKd" Minimum="0" Maximum="1000" Value="0" ValueChanged="SliderKd_ValueChanged" Grid.Row="3" Margin="4"></Slider>
             <TextBox x:Name="txtKd" Grid.Row="3" Grid.Column="1" Margin="4"></TextBox>
         </Grid>
+        <Grid x:Name="gridLR">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+            <Slider x:Name="sliderL" Minimum="-10" Maximum="10"></Slider>
+            <Slider x:Name="sliderR" Minimum="-10" Maximum="10" Grid.Column="1"></Slider>
+                <TextBlock x:Name="txtL" Grid.Row="1"></TextBlock>
+                <TextBlock x:Name="txtR" Grid.Row="1" Grid.Column="1"></TextBlock>
+        </Grid>
         <ScrollViewer  Grid.Row="1">
             <TextBox x:Name="txtInfo" MaxLines="20" Grid.Row="1"></TextBox>
         </ScrollViewer>
@@ -43,6 +57,16 @@
         <StackPanel Grid.Column="0" Grid.Row="3" Orientation="Horizontal">
             <Button  x:Name="btnPair" Click="Pair_ClickAsync" Margin="4">Pair</Button>
             <Button  x:Name="btnSend" Click="BtnSend_Click" Margin="4">Send</Button>
+            <ComboBox x:Name="cmbDevices" SelectionChanged="cmbDevices_SelectionChanged">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" Margin="5" />
+                            <TextBlock Text="{Binding Id}"  Margin="5"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
         </StackPanel>
         
     </Grid>

@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using Windows.Storage.Streams;
 using System.IO;
 using System.Windows.Threading;
+using System.Collections.ObjectModel;
 
 namespace WpfBlueTooth
 {
@@ -21,10 +22,16 @@ namespace WpfBlueTooth
     {
         BluetoothUtil bu;
         DispatcherTimer tmr = new DispatcherTimer();
+
+        int oldL = 0, oldR = 0;
+
+        ObservableCollection<IdName> deviceList = new ObservableCollection<IdName>();
+
         public MainWindow()
         {
 
             InitializeComponent();
+            cmbDevices.ItemsSource = deviceList;
             bu = new BluetoothUtil(DevFound, OnError);
             bu.OnInfo = OnInfo;
             sliderSetPoint.Value = 180;
@@ -35,6 +42,7 @@ namespace WpfBlueTooth
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            /*
             var devId = ReadConnectionStr();
             bu.IsDeviceHere(devId).ContinueWith(async tret =>
             {
@@ -50,11 +58,12 @@ namespace WpfBlueTooth
                     await DoPair(devId);
                 }
             });
-
+            */
             
             tmr.Interval = new TimeSpan(0, 0, 0, 0, 300);
             tmr.Tick += Tmr_Tick;
             tmr.Start();
+            bu.Scan();
         }
 
         private void Tmr_Tick(object sender, EventArgs e)
@@ -97,9 +106,28 @@ namespace WpfBlueTooth
             }
         }
 
+        Dictionary<string, string> Items = new Dictionary<string, string>();
         bool found = false;
         async void DevFound(BluetoothUtil.ServiceDiscoverRet dev)
         {
+            DspAct(() =>
+            {
+                var deviceId = dev.device.DeviceId;
+                lock (Items)
+                {
+                    if (!Items.ContainsKey(deviceId))
+                    {
+                        Items.Add(deviceId, deviceId);
+                        deviceList.Add(new IdName
+                        {
+                            Id = dev.device.DeviceId,
+                            Name = dev.device.Name,
+                        });
+                    }
+                }
+            });
+
+
             if (found) return;
             if (dev.device.Name == "MLT-BT05")
             {
@@ -272,6 +300,26 @@ namespace WpfBlueTooth
                         Dsp(res.ToString());
                     }
                 }
+
+                {
+                    var val = (int)sliderL.Value;
+                    if (oldL != val)
+                    {
+                        oldL = val;
+                        txtL.Text = val.ToString();
+                        await SendCmd("l", val.ToString());
+                    }
+                }
+
+                {
+                    var val = (int)sliderR.Value;
+                    if (oldR != val)
+                    {
+                        oldL = val;
+                        txtR.Text = val.ToString();
+                        await SendCmd("r", val.ToString());
+                    }
+                }
             }
         }
         int oldSetpoint = -1;
@@ -315,9 +363,22 @@ namespace WpfBlueTooth
             }
         }
 
+        private async void cmbDevices_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            var selected = (IdName)cmbDevices.SelectedItem;
+            await DoPair(selected.Id);
+        }
+
         private void Window_Unloaded(object sender, RoutedEventArgs e)
         {
             tmr.Stop();
         }
+                
+    }
+
+    public class IdName
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
     }
 }
