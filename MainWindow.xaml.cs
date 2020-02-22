@@ -315,7 +315,7 @@ namespace WpfBlueTooth
                     var val = (int)sliderR.Value;
                     if (oldR != val)
                     {
-                        oldL = val;
+                        oldR = val;
                         txtR.Text = val.ToString();
                         await SendCmd("r", val.ToString());
                     }
