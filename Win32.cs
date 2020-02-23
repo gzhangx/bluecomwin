@@ -11,6 +11,50 @@ namespace WpfBlueTooth
     {
         public static void FindLoop()
         {
+            WSAData data = new WSAData();
+            int result = 0;
+
+            if (WSAStartup(2, out data) != 0)
+            {
+                Console.WriteLine("Wsastartup failed");
+                return;
+            }
+            Int32 dwSize = 0;
+            Int32 hLookup = 0;
+            WSAQUERYSET lpRestrictions = new WSAQUERYSET();
+            lpRestrictions.Initialize();
+            if (WSALookupServiceBegin(ref lpRestrictions, LUP_CONTAINERS, ref hLookup) != 0)
+            {
+                Console.WriteLine("WSALookupServiceBegin failed");
+            }
+
+            int nextresult = 0;
+
+            while (nextresult != WSAENOMORE && nextresult != WSA_E_NO_MORE)
+            {
+                int dwLength = 5000;
+                WSAQUERYSET qs = new WSAQUERYSET();
+                IntPtr pqs = Marshal.AllocHGlobal(dwLength);
+                nextresult = WSALookupServiceNext(hLookup, 4080, ref dwLength, pqs);
+                if (nextresult == 0)
+                {
+                    qs = Marshal.PtrToStructure<WSAQUERYSET>(pqs);
+                    Console.WriteLine(qs.szServiceInstanceName);
+                }
+                else
+                {
+                    nextresult = Marshal.GetLastWin32Error();
+                }
+                Marshal.FreeHGlobal(pqs);
+            }
+
+            WSALookupServiceEnd(hLookup);
+            WSACleanup();
+        }
+
+
+        public static void FindLoopNOWSA()
+        {
             BLUETOOTH_FIND_RADIO_PARAM m_bt_find_radio = new BLUETOOTH_FIND_RADIO_PARAM();
             m_bt_find_radio.init();
 
@@ -64,6 +108,12 @@ namespace WpfBlueTooth
 
                     do
                     {
+                        Guid[] guidServices = new Guid[100];
+                        uint services = (uint)(16*guidServices.Length);
+                        if (BluetoothEnumerateInstalledServices(m_radio, ref m_device_info, ref services, guidServices) != 0)
+                        {
+                            Console.WriteLine("failed to get services");
+                        }
                         m_device_id++;
 
                         Console.WriteLine("fouond device " + m_device_info.szName);
@@ -208,5 +258,79 @@ namespace WpfBlueTooth
         static extern bool BluetoothFindNextDevice(IntPtr hFind, ref BLUETOOTH_DEVICE_INFO pbtdi);
         [DllImport("irprops.cpl", SetLastError = true)]
         static extern bool BluetoothFindDeviceClose(IntPtr hFind);
+        [DllImport("irprops.cpl", SetLastError = true)]
+        private static extern uint BluetoothEnumerateInstalledServices(IntPtr hRadio, ref BLUETOOTH_DEVICE_INFO pbtdi, ref uint pcServices, Guid[] pGuidServices);
+
+
+
+
+
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        public struct WSAQUERYSET
+        {
+            public Int32 dwSize;
+            public String szServiceInstanceName;
+            public IntPtr lpServiceClassId;
+            public IntPtr lpVersion;
+            public String lpszComment;
+            public Int32 dwNameSpace;
+            public IntPtr lpNSProviderId;
+            public String lpszContext;
+            public Int32 dwNumberOfProtocols;
+            public IntPtr lpafpProtocols;
+            public String lpszQueryString;
+            public Int32 dwNumberOfCsAddrs;
+            public IntPtr lpcsaBuffer;
+            public Int32 dwOutputFlags;
+            public IntPtr Blob;
+
+            public void Initialize()
+            {
+                dwSize = Marshal.SizeOf(typeof(WSAQUERYSET));
+                szServiceInstanceName = null;
+                dwNameSpace = NS_BTH;
+                lpcsaBuffer = IntPtr.Zero;
+            }
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+        public struct WSAData
+        {
+            public Int16 version;
+            public Int16 highVersion;
+
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 257)]
+            public String description;
+
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 129)]
+            public String systemStatus;
+
+            public Int16 maxSockets;
+            public Int16 maxUdpDg;
+            public IntPtr vendorInfo;
+        }
+
+
+        const Int32 LUP_CONTAINERS = 0x02;
+        const Int32 NS_BTH = 16;
+        const Int32 LUP_RETURN_NAME = 0x0010;
+        const Int32 LUP_RETURN_COMMENT = 0x0080;
+        const Int32 LUP_RETURN_ADDR = 0x0100;
+        const Int32 LUP_RETURN_ALL = 0x0FF0;
+
+        const Int32 WSAENOMORE =10102;
+        const Int32 WSA_E_NO_MORE = 10110;
+
+        [DllImport("ws2_32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern Int32 WSAStartup(Int16 wVersionRequested, out WSAData wsaData);
+        [DllImport("ws2_32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern Int32 WSALookupServiceBegin(ref WSAQUERYSET lpqsRestrictions, Int32 dwControlFlags, ref Int32 lphLookup);
+        [DllImport("ws2_32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern Int32 WSALookupServiceNext(Int32 hLookup, Int32 dwControlFlags, ref Int32 lpdwBufferLength, IntPtr pqsResults);
+        [DllImport("ws2_32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern Int32 WSALookupServiceEnd(Int32 hLookup);
+        [DllImport("ws2_32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        static extern Int32 WSACleanup();
     }
 }
