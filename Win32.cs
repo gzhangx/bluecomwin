@@ -67,17 +67,16 @@ namespace WpfBlueTooth
                         m_device_id++;
 
                         Console.WriteLine("fouond device " + m_device_info.szName);
-
                         // Well, the found device information can be used for further socket
-
                         // operation such as creating a socket, bind, listen, connect, send, receive etc..
-
                         // If no more device, exit the loop
 
                         if (!BluetoothFindNextDevice(m_bt_dev, ref m_device_info))
 
                             break;
                     } while (BluetoothFindNextDevice(m_bt_dev, ref m_device_info));
+                    if (!BluetoothFindDeviceClose(m_bt_dev))
+                        Console.WriteLine("BluetoothFindDeviceClose(m_bt_dev) failed with");
                 } while (!BluetoothFindNextRadio(ref m_bt_find_radio, out m_radio));
                     //work with bluetooth
                     CloseHandle(m_radio);
@@ -207,5 +206,7 @@ namespace WpfBlueTooth
         static extern IntPtr BluetoothFindFirstDevice(ref BLUETOOTH_DEVICE_SEARCH_PARAMS searchParams, ref BLUETOOTH_DEVICE_INFO deviceInfo);
         [DllImport("Irprops.cpl", SetLastError = true)]
         static extern bool BluetoothFindNextDevice(IntPtr hFind, ref BLUETOOTH_DEVICE_INFO pbtdi);
+        [DllImport("irprops.cpl", SetLastError = true)]
+        static extern bool BluetoothFindDeviceClose(IntPtr hFind);
     }
 }
