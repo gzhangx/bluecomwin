@@ -50,7 +50,7 @@ namespace WpfBlueTooth
             //Some invalid argument was supplied(for example, specifying an invalid level to the setsockopt function).In some instances, it also refers to the current state of the socket—for instance, calling accept on a socket that is not listening.
             //10108  WSASERVICE_NOT_FOUND
             int flags = LUP_FLUSHCACHE | LUP_RETURN_NAME | LUP_RETURN_TYPE | LUP_RETURN_ADDR | LUP_RETURN_BLOB | LUP_RETURN_COMMENT;
-            if (WSALookupServiceBegin(ref lpRestrictions, flags, ref hLookup) != 0)
+            if (WSALookupServiceBegin(ref lpRestrictions, LUP_CONTAINERS, ref hLookup) != 0)
             {
                 Console.WriteLine("WSALookupServiceBegin failed " + WSAGetLastError());
                 return;
@@ -345,6 +345,7 @@ namespace WpfBlueTooth
                 szServiceInstanceName = null;
                 dwNameSpace = NS_BTH;
                 lpcsaBuffer = IntPtr.Zero;
+                Blob = IntPtr.Zero;
             }
         }
 
