@@ -29,7 +29,7 @@ namespace WpfBlueTooth
 
         public MainWindow()
         {
-
+            Win32.FindLoop();
             InitializeComponent();
             cmbDevices.ItemsSource = deviceList;
             bu = new BluetoothUtil(DevFound, OnError);
