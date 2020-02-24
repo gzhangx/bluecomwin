@@ -48,12 +48,13 @@ namespace WpfBlueTooth
             int flags = LUP_CONTAINERS| LUP_FLUSHCACHE | LUP_RETURN_NAME | LUP_RETURN_TYPE | LUP_RETURN_ADDR | LUP_RETURN_BLOB | LUP_RETURN_COMMENT;
             if (WSALookupServiceBegin(ref lpRestrictions, flags, ref hLookup) != 0)
             {
-                Console.WriteLine("WSALookupServiceBegin failed");
+                Console.WriteLine("WSALookupServiceBegin failed " + WSAGetLastError());
+                return;
             }
 
             int nextresult = 0;
 
-            while (nextresult != WSAENOMORE && nextresult != WSA_E_NO_MORE)
+            while (nextresult != WSAENOMORE && nextresult != WSA_E_NO_MORE && nextresult!=-1)
             {
                 int dwLength = 5000;
                 WSAQUERYSET qs = new WSAQUERYSET();
@@ -92,10 +93,6 @@ namespace WpfBlueTooth
                             Console.WriteLine("BluetoothSdpEnumAttributes() failed with error code " );
                         }
                     }
-                }
-                else
-                {
-                    nextresult = Marshal.GetLastWin32Error();
                 }
                 Marshal.FreeHGlobal(pqs);
             }
