@@ -9,8 +9,14 @@ namespace WpfBlueTooth
 {
     public static class Win32
     {
+        static bool BluethSdpEnumAttributesCallback(ulong uAttribId, IntPtr pValueStream, ulong cbStreamSize, IntPtr pvParam)
+        {
+            return true;
+        }
         public static void FindLoop()
         {
+            byte[] L2CAP_PROTOCOL_UUID = new byte[] { 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB };
+            WSAPROTOCOL_INFO protocolInfo = new WSAPROTOCOL_INFO();
             WSAData data = new WSAData();
             int result = 0;
 
@@ -19,11 +25,28 @@ namespace WpfBlueTooth
                 Console.WriteLine("Wsastartup failed");
                 return;
             }
+
+            IntPtr s = socket(ADDRESS_FAMILIES.AF_BTH, SOCKET_TYPE.SOCK_STREAM, PROTOCOL.BTHPROTO_RFCOMM);
+            if ((int)s == 0xffff)
+            {
+                Console.WriteLine("Failed to get bluetooth socket with error code");
+                return;
+            }
+            int protocolInfoSize = Marshal.SizeOf(protocolInfo);
+            //SOL_SOCKET = 0xffff SO_PROTOCOL_INFO = 0x2005, 0x2004 SO_PROTOCOL_INFOA 
+            int gsr = getsockopt(s, 0xffff, 0x2004, out protocolInfo, ref protocolInfoSize);
+            if (gsr != 0)
+            {
+                Console.WriteLine("getsockopt(SO_PROTOCOL_INFO) failed with error code " + gsr);
+                return;
+            }
+           
             Int32 dwSize = 0;
             Int32 hLookup = 0;
             WSAQUERYSET lpRestrictions = new WSAQUERYSET();
             lpRestrictions.Initialize();
-            if (WSALookupServiceBegin(ref lpRestrictions, LUP_CONTAINERS, ref hLookup) != 0)
+            int flags = LUP_CONTAINERS| LUP_FLUSHCACHE | LUP_RETURN_NAME | LUP_RETURN_TYPE | LUP_RETURN_ADDR | LUP_RETURN_BLOB | LUP_RETURN_COMMENT;
+            if (WSALookupServiceBegin(ref lpRestrictions, flags, ref hLookup) != 0)
             {
                 Console.WriteLine("WSALookupServiceBegin failed");
             }
@@ -40,6 +63,35 @@ namespace WpfBlueTooth
                 {
                     qs = Marshal.PtrToStructure<WSAQUERYSET>(pqs);
                     Console.WriteLine(qs.szServiceInstanceName);
+                    CSADDR_INFO addr = Marshal.PtrToStructure<CSADDR_INFO>(qs.lpcsaBuffer);
+                    Console.WriteLine(addr);
+                    var addrinlocal = Marshal.PtrToStructure<sockaddr>(addr.LocalAddr.lpSockaddr);
+                    var addrremote = Marshal.PtrToStructure<sockaddr>(addr.RemoteAddr.lpSockaddr);
+                    StringBuilder sb = new StringBuilder();
+                    sb.Length = 100;
+                    int len = sb.Length;
+                    if (WSAAddressToString(addr.RemoteAddr.lpSockaddr, addr.LocalAddr.length, ref protocolInfo, sb, ref len) != 0)
+                    {
+                        Console.WriteLine("error " + WSAGetLastError());
+                    }else
+                    {
+                        Console.WriteLine(sb);
+                        WSAQUERYSET querySet2 = new WSAQUERYSET();
+                        querySet2.Initialize();
+                        IntPtr unmanagedPointer = Marshal.AllocHGlobal(L2CAP_PROTOCOL_UUID.Length);
+                        Marshal.Copy(L2CAP_PROTOCOL_UUID, 0, unmanagedPointer, L2CAP_PROTOCOL_UUID.Length);
+                        querySet2.lpServiceClassId = unmanagedPointer;
+                        querySet2.dwNameSpace = NS_BTH;
+                        querySet2.lpszContext = sb.ToString();
+                        Marshal.FreeHGlobal(unmanagedPointer);
+
+                        var blob = Marshal.PtrToStructure<Blob>(qs.Blob);
+                        var ddd = BluetoothSdpEnumAttributes(blob.pBlobData, (ulong)blob.cbSize, BluethSdpEnumAttributesCallback, IntPtr.Zero);
+                        if (!BluetoothSdpEnumAttributes(blob.pBlobData, (ulong)blob.cbSize, BluethSdpEnumAttributesCallback, IntPtr.Zero))
+                        {
+                            Console.WriteLine("BluetoothSdpEnumAttributes() failed with error code " );
+                        }
+                    }
                 }
                 else
                 {
@@ -311,6 +363,76 @@ namespace WpfBlueTooth
             public IntPtr vendorInfo;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+
+        public struct WSAPROTOCOLCHAIN
+        {
+            public int ChainLen;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 7 /* MAX_PROTOCOL_CHAIN */)]
+            public int[] ChainEntries;
+        }
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WSAPROTOCOL_INFO
+        {
+
+            public int dwServiceFlags1;
+            public int dwServiceFlags2;
+            public int dwServiceFlags3;
+            public int dwServiceFlags4;
+            public int dwProviderFlags;
+            public Guid ProviderId;
+            public int dwCatalogEntryId;
+            public WSAPROTOCOLCHAIN ProtocolChain;
+            public int iVersion;
+            public int iAddressFamily;
+            public int iMaxSockAddr;
+            public int iMinSockAddr;
+            public int iSocketType;
+            public int iProtocol;
+            public int iProtocolMaxOffset;
+            public int iNetworkByteOrder;
+            public int iSecurityScheme;
+            public int dwMessageSize;
+            public int dwProviderReserved;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 255 /* WSAPROTOCOL_LEN */ + 1)]
+            public char[] szProtocol;
+
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SOCKADDR_BTH
+        {
+            public ushort addressFamily;
+            public ulong btAddr;
+            public ulong serviceClassId1;
+            public ulong serviceClassId2;
+            public ulong serviceClassId3;
+            public ulong port;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SOCKET_ADDRESS
+        {
+            public IntPtr lpSockaddr;
+            public Int32 length;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct CSADDR_INFO
+        {
+            public SOCKET_ADDRESS LocalAddr;
+            public SOCKET_ADDRESS RemoteAddr;
+            public Int32 iSocketType;
+            public Int32 iProtocol;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct Blob
+        {
+            public int cbSize;
+            public IntPtr pBlobData;
+        }
+
 
         const Int32 LUP_CONTAINERS = 0x02;
         const Int32 NS_BTH = 16;
@@ -318,6 +440,9 @@ namespace WpfBlueTooth
         const Int32 LUP_RETURN_COMMENT = 0x0080;
         const Int32 LUP_RETURN_ADDR = 0x0100;
         const Int32 LUP_RETURN_ALL = 0x0FF0;
+        const Int32 LUP_FLUSHCACHE = 0x2000;
+        const Int32 LUP_RETURN_TYPE = 0x0020;
+        const Int32 LUP_RETURN_BLOB = 0x0200;
 
         const Int32 WSAENOMORE =10102;
         const Int32 WSA_E_NO_MORE = 10110;
@@ -332,5 +457,220 @@ namespace WpfBlueTooth
         static extern Int32 WSALookupServiceEnd(Int32 hLookup);
         [DllImport("ws2_32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         static extern Int32 WSACleanup();
+        public enum ADDRESS_FAMILIES : short
+        {
+            /// <summary>
+            /// Unspecified [value = 0].
+            /// </summary>
+            AF_UNSPEC = 0,
+            /// <summary>
+            /// Local to host (pipes, portals) [value = 1].
+            /// </summary>
+            AF_UNIX = 1,
+            /// <summary>
+            /// Internetwork: UDP, TCP, etc [value = 2].
+            /// </summary>
+            AF_INET = 2,
+            /// <summary>
+            /// Arpanet imp addresses [value = 3].
+            /// </summary>
+            AF_IMPLINK = 3,
+            /// <summary>
+            /// Pup protocols: e.g. BSP [value = 4].
+            /// </summary>
+            AF_PUP = 4,
+            /// <summary>
+            /// Mit CHAOS protocols [value = 5].
+            /// </summary>
+            AF_CHAOS = 5,
+            /// <summary>
+            /// XEROX NS protocols [value = 6].
+            /// </summary>
+            AF_NS = 6,
+            /// <summary>
+            /// IPX protocols: IPX, SPX, etc [value = 6].
+            /// </summary>
+            AF_IPX = 6,
+            /// <summary>
+            /// ISO protocols [value = 7].
+            /// </summary>
+            AF_ISO = 7,
+            /// <summary>
+            /// OSI is ISO [value = 7].
+            /// </summary>
+            AF_OSI = 7,
+            /// <summary>
+            /// european computer manufacturers [value = 8].
+            /// </summary>
+            AF_ECMA = 8,
+            /// <summary>
+            /// datakit protocols [value = 9].
+            /// </summary>
+            AF_DATAKIT = 9,
+            /// <summary>
+            /// CCITT protocols, X.25 etc [value = 10].
+            /// </summary>
+            AF_CCITT = 10,
+            /// <summary>
+            /// IBM SNA [value = 11].
+            /// </summary>
+            AF_SNA = 11,
+            /// <summary>
+            /// DECnet [value = 12].
+            /// </summary>
+            AF_DECnet = 12,
+            /// <summary>
+            /// Direct data link interface [value = 13].
+            /// </summary>
+            AF_DLI = 13,
+            /// <summary>
+            /// LAT [value = 14].
+            /// </summary>
+            AF_LAT = 14,
+            /// <summary>
+            /// NSC Hyperchannel [value = 15].
+            /// </summary>
+            AF_HYLINK = 15,
+            /// <summary>
+            /// AppleTalk [value = 16].
+            /// </summary>
+            AF_APPLETALK = 16,
+            /// <summary>
+            /// NetBios-style addresses [value = 17].
+            /// </summary>
+            AF_NETBIOS = 17,
+            /// <summary>
+            /// VoiceView [value = 18].
+            /// </summary>
+            AF_VOICEVIEW = 18,
+            /// <summary>
+            /// Protocols from Firefox [value = 19].
+            /// </summary>
+            AF_FIREFOX = 19,
+            /// <summary>
+            /// Somebody is using this! [value = 20].
+            /// </summary>
+            AF_UNKNOWN1 = 20,
+            /// <summary>
+            /// Banyan [value = 21].
+            /// </summary>
+            AF_BAN = 21,
+            /// <summary>
+            /// Native ATM Services [value = 22].
+            /// </summary>
+            AF_ATM = 22,
+            /// <summary>
+            /// Internetwork Version 6 [value = 23].
+            /// </summary>
+            AF_INET6 = 23,
+            /// <summary>
+            /// Microsoft Wolfpack [value = 24].
+            /// </summary>
+            AF_CLUSTER = 24,
+            /// <summary>
+            /// IEEE 1284.4 WG AF [value = 25].
+            /// </summary>
+            AF_12844 = 25,
+            /// <summary>
+            /// IrDA [value = 26].
+            /// </summary>
+            AF_IRDA = 26,
+            /// <summary>
+            /// Network Designers OSI &amp; gateway enabled protocols [value = 28].
+            /// </summary>
+            AF_NETDES = 28,
+            /// <summary>
+            /// [value = 29].
+            /// </summary>
+            AF_TCNPROCESS = 29,
+            /// <summary>
+            /// [value = 30].
+            /// </summary>
+            AF_TCNMESSAGE = 30,
+            /// <summary>
+            /// [value = 31].
+            /// </summary>
+            AF_ICLFXBM = 31,
+            AF_BTH = 32,
+        }
+        public enum SOCKET_TYPE : short
+        {
+            /// <summary>
+            /// stream socket
+            /// </summary>
+            SOCK_STREAM = 1,
+            /// <summary>
+            /// datagram socket
+            /// </summary>
+            SOCK_DGRAM = 2,
+
+            /// <summary>
+            /// raw-protocol interface
+            /// </summary>
+            SOCK_RAW = 3,
+
+            /// <summary>
+            /// reliably-delivered message
+            /// </summary>
+            SOCK_RDM = 4,
+            /// <summary>
+            /// sequenced packet stream
+            /// </summary>
+            SOCK_SEQPACKET = 5
+        }
+        public enum PROTOCOL : short
+        {//dummy for IP  
+            BTHPROTO_RFCOMM = 3,
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct sockaddr
+        {
+            public ushort sa_family;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 14)]
+            public byte[] sa_data;
+        };
+        [StructLayout(LayoutKind.Sequential)]
+        public struct sockaddr_in
+        {
+            //[MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x1e*2 /* WSAPROTOCOL_LEN */ + 1)]
+            //public char[] szProtocol;
+            public short sin_family;
+            public ushort sin_port;
+            public ulong sin_addr;
+           public ulong sin_zero1;
+            public ulong sin_zero2;
+        };
+
+        [DllImport("ws2_32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern IntPtr socket(ADDRESS_FAMILIES af, SOCKET_TYPE socket_type, PROTOCOL protocol);
+        [DllImport("Ws2_32.dll")]
+        public static extern int getsockopt(IntPtr s, int level, int optname, out WSAPROTOCOL_INFO optval, ref int optlen);
+        [DllImport("Ws2_32.dll", CharSet = CharSet.Ansi, EntryPoint = "WSAAddressToStringA")]
+        public static extern uint WSAAddressToString(IntPtr lpsaAddress, int dwAddressLength, ref WSAPROTOCOL_INFO lpProtocolInfo,
+    StringBuilder lpszAddressString, ref int lpdwAddressStringLength);
+        [DllImport("ws2_32.dll", CharSet = CharSet.Auto)]
+        static extern Int32 WSAGetLastError();
+
+        public delegate bool BluethSdpEnumAttributesCb(ulong uAttribId, IntPtr pValueStream, ulong cbStreamSize, IntPtr pvParam);
+        [DllImport("irprops.cpl", SetLastError = true)] //, CallingConvention = CallingConvention.Cdecl
+        public static extern bool BluetoothSdpEnumAttributes(
+  IntPtr pSDPStream,
+  ulong cbStreamSize,
+  [MarshalAs(UnmanagedType.FunctionPtr)] BluethSdpEnumAttributesCb pfnCallback,
+  IntPtr IntPtr //IntPtr
+);
+
+
+        //DWORD BluetoothSdpGetElementData(LPBYTE pSdpStream,ulong cbSdpStreamLength,PSDP_ELEMENT_DATA pData);
+        /*
+        [DllImport("Ws2_32.dll", CharSet = CharSet.Unicode, EntryPoint = "WSAAddressToStringW")]
+        public static extern uint WSAAddressToString(ref sockaddr_in lpsaAddress, int dwAddressLength, IntPtr lpProtocolInfo,
+    StringBuilder lpszAddressString, ref int lpdwAddressStringLength);
+
+        [DllImport("Ws2_32.dll", CharSet = CharSet.Unicode, EntryPoint = "WSAAddressToStringW")]
+        public static extern uint WSAAddressToString(ref sockaddr_in6 lpsaAddress, int dwAddressLength, IntPtr lpProtocolInfo,
+            StringBuilder lpszAddressString, ref int lpdwAddressStringLength);
+            */
     }
 }
