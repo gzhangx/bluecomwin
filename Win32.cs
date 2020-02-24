@@ -45,7 +45,11 @@ namespace WpfBlueTooth
             Int32 hLookup = 0;
             WSAQUERYSET lpRestrictions = new WSAQUERYSET();
             lpRestrictions.Initialize();
-            int flags = LUP_CONTAINERS| LUP_FLUSHCACHE | LUP_RETURN_NAME | LUP_RETURN_TYPE | LUP_RETURN_ADDR | LUP_RETURN_BLOB | LUP_RETURN_COMMENT;
+            //https://docs.microsoft.com/en-us/windows/win32/winsock/windows-sockets-error-codes-2
+            //10022 Invalid argument.
+            //Some invalid argument was supplied(for example, specifying an invalid level to the setsockopt function).In some instances, it also refers to the current state of the socket—for instance, calling accept on a socket that is not listening.
+            //10108  WSASERVICE_NOT_FOUND
+            int flags = LUP_FLUSHCACHE | LUP_RETURN_NAME | LUP_RETURN_TYPE | LUP_RETURN_ADDR | LUP_RETURN_BLOB | LUP_RETURN_COMMENT;
             if (WSALookupServiceBegin(ref lpRestrictions, flags, ref hLookup) != 0)
             {
                 Console.WriteLine("WSALookupServiceBegin failed " + WSAGetLastError());
@@ -58,8 +62,9 @@ namespace WpfBlueTooth
             {
                 int dwLength = 5000;
                 WSAQUERYSET qs = new WSAQUERYSET();
-                IntPtr pqs = Marshal.AllocHGlobal(dwLength);
-                nextresult = WSALookupServiceNext(hLookup, 4080, ref dwLength, pqs);
+                IntPtr pqs = Marshal.AllocHGlobal(dwLength);                
+                //4080
+                nextresult = WSALookupServiceNext(hLookup, LUP_RETURN_ALL, ref dwLength, pqs);
                 if (nextresult == 0)
                 {
                     qs = Marshal.PtrToStructure<WSAQUERYSET>(pqs);
