@@ -67,6 +67,7 @@
                     </DataTemplate>
                 </ComboBox.ItemTemplate>
             </ComboBox>
+            <CheckBox x:Name="chkFire" Margin="5" VerticalAlignment="Center" Checked="chkFire_Checked" Unchecked="chkFire_Checked">fire</CheckBox>
         </StackPanel>
         
     </Grid>

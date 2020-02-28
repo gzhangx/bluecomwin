@@ -320,6 +320,12 @@ namespace WpfBlueTooth
                         await SendCmd("r", val.ToString());
                     }
                 }
+
+                if (oldFire != fire)
+                {
+                    oldFire = fire;
+                    await SendCmd("pin4", fire ? "1" : "0");
+                }
             }
         }
         int oldSetpoint = -1;
@@ -367,6 +373,13 @@ namespace WpfBlueTooth
         {
             var selected = (IdName)cmbDevices.SelectedItem;
             await DoPair(selected.Id);
+        }
+
+        bool fire = false;
+        bool oldFire = false;
+        private void chkFire_Checked(object sender, RoutedEventArgs e)
+        {
+            fire = chkFire.IsChecked ?? false;
         }
 
         private void Window_Unloaded(object sender, RoutedEventArgs e)
