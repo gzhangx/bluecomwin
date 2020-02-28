@@ -132,6 +132,11 @@ namespace WpfBlueTooth
             if (dev.device.DeviceId == ReadConnectionStr())
             {
                 //SaveConnectionStr(dev.device.DeviceId);
+                var itm = deviceList.FirstOrDefault(x => x.Id == dev.device.DeviceId);                
+                DspAct(() =>
+                {
+                    cmbDevices.SelectedItem = itm;
+                });
                 lock (bu)
                 {
                     if (found) return;
