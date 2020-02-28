@@ -59,7 +59,7 @@ namespace WpfBlueTooth
                 }
             });
             */
-            
+
             tmr.Interval = new TimeSpan(0, 0, 0, 0, 300);
             tmr.Tick += Tmr_Tick;
             tmr.Start();
@@ -100,7 +100,8 @@ namespace WpfBlueTooth
             try
             {
                 return File.ReadAllText(GetSaveFileName());
-            } catch
+            }
+            catch
             {
                 return "";
             }
@@ -132,7 +133,7 @@ namespace WpfBlueTooth
             if (dev.device.DeviceId == ReadConnectionStr())
             {
                 //SaveConnectionStr(dev.device.DeviceId);
-                var itm = deviceList.FirstOrDefault(x => x.Id == dev.device.DeviceId);                
+                var itm = deviceList.FirstOrDefault(x => x.Id == dev.device.DeviceId);
                 DspAct(() =>
                 {
                     cmbDevices.SelectedItem = itm;
@@ -143,7 +144,7 @@ namespace WpfBlueTooth
                     found = true;
                 }
                 Dsp("found dev");
-                bu.StopScan();
+                //bu.StopScan();
                 await DoPair(dev.device.DeviceId);
             }
         }
@@ -170,33 +171,35 @@ namespace WpfBlueTooth
             }
             try
             {
-                var newChannel = new BluetoothUtil.BleChannel(deviceId, "0000ffe1",str=>
-                {
-                    if (str == null)
-                    {
-                        Dsp("connection closed");
-                        try
-                        {
-                            bleChannel.Dispose();
-                        } catch
-                        {
-                            Console.WriteLine("err in dispose");
-                        }
-                        bleChannel = null;
-                        EnableDisable(false);
-                    }
-                    else
-                    {
-                        BlueDsp(str);
-                    }
-                });
+                var newChannel = new BluetoothUtil.BleChannel(deviceId, "0000ffe1", str =>
+                 {
+                     if (str == null)
+                     {
+                         Dsp("connection closed");
+                         try
+                         {
+                             bleChannel.Dispose();
+                         }
+                         catch
+                         {
+                             Console.WriteLine("err in dispose");
+                         }
+                         bleChannel = null;
+                         EnableDisable(false);
+                     }
+                     else
+                     {
+                         BlueDsp(str);
+                     }
+                 });
                 await bu.GetBleChannel(newChannel);
                 bleChannel = newChannel;
                 if (bleChannel.service == null && bleChannel.ErrorMsg == null)
                 {
                     bleChannel.ErrorMsg = "Device not found";
                 }
-            } catch (Exception err)
+            }
+            catch (Exception err)
             {
                 Dsp(err.Message);
                 Console.WriteLine(err);
@@ -206,7 +209,10 @@ namespace WpfBlueTooth
                 Dsp(bleChannel.ErrorMsg);
                 bleChannel.Dispose();
                 bleChannel = null;
-                btnSend.IsEnabled = false;
+                DspAct(() =>
+                {
+                    btnSend.IsEnabled = false;
+                });
                 return;
             }
             EnableDisable(true);
@@ -237,7 +243,7 @@ namespace WpfBlueTooth
         {
             DspAct(() =>
             {
-                txtInfo.Text = txtInfo.Text+"\n"+s;
+                txtInfo.Text = txtInfo.Text + "\n" + s;
                 txtInfo.Focus();
                 txtInfo.CaretIndex = txtInfo.Text.Length;
                 txtInfo.ScrollToEnd();
@@ -251,7 +257,8 @@ namespace WpfBlueTooth
                 try
                 {
                     return await bleChannel.Send(s);
-                } catch (Exception exc)
+                }
+                catch (Exception exc)
                 {
                     var err = $"SendBle error {exc.Message}";
                     Console.WriteLine(err);
@@ -358,14 +365,14 @@ namespace WpfBlueTooth
             {
                 int val = ((int)sliderKp.Value);
                 txtKp.Text = val.ToString();
-                
+
             }
         }
 
         double oldKi = -1;
         private void SliderKi_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            var val = sliderKi.Value/100;
+            var val = sliderKi.Value / 100;
             if (txtKi != null)
             {
                 txtKi.Text = val.ToString("0.0000");
@@ -383,7 +390,7 @@ namespace WpfBlueTooth
         }
 
         private async Task PairSelected()
-        {            
+        {
             var selected = (IdName)cmbDevices.SelectedItem;
             if (selected == null)
             {
@@ -405,11 +412,44 @@ namespace WpfBlueTooth
             fire = chkFire.IsChecked ?? false;
         }
 
+        private void canvasDrive_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            const int LIMIT0 = 5;
+            var pos = e.GetPosition((IInputElement)sender);
+            int rx = ((int)pos.X) - 50;
+            int ry = 50 - ((int)pos.Y);
+
+            Func<int, int> doLimit = v =>
+             {
+                 if (Math.Abs(v) < LIMIT0) v = 0;
+                 v /= 5;
+                 if (v < 0 && v >= -9) v -= 1;
+                 if (v > 0 && v <= 9) v += 1;
+                 return v;
+             };
+            rx = doLimit(rx);
+            ry = doLimit(ry);
+            Dsp($"{rx} {ry}");
+            var left = ry;
+            var right = ry;
+
+            if (ry > 0)
+            {
+                right -= rx;
+            }
+            else
+            {
+                right += rx;
+            }
+
+            sliderR.Value = right;
+            sliderL.Value = left;
+        }
+
         private void Window_Unloaded(object sender, RoutedEventArgs e)
         {
             tmr.Stop();
         }
-                
     }
 
     public class IdName
