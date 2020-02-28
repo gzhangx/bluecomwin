@@ -129,9 +129,9 @@ namespace WpfBlueTooth
 
 
             if (found) return;
-            if (dev.device.Name == "MLT-BT05")
+            if (dev.device.DeviceId == ReadConnectionStr())
             {
-                SaveConnectionStr(dev.device.DeviceId);
+                //SaveConnectionStr(dev.device.DeviceId);
                 lock (bu)
                 {
                     if (found) return;
@@ -212,7 +212,7 @@ namespace WpfBlueTooth
 
         private async void Pair_ClickAsync(object sender, RoutedEventArgs e)
         {
-            await DoPair(ReadConnectionStr());
+            await PairSelected();
         }
 
         void DspAct(Action act)
@@ -243,7 +243,15 @@ namespace WpfBlueTooth
         {
             if (bleChannel != null)
             {
-                return await bleChannel.Send(s);
+                try
+                {
+                    return await bleChannel.Send(s);
+                } catch (Exception exc)
+                {
+                    var err = $"SendBle error {exc.Message}";
+                    Console.WriteLine(err);
+                    Dsp(err);
+                }
             }
             return GattCommunicationStatus.Unreachable;
         }
@@ -369,10 +377,20 @@ namespace WpfBlueTooth
             }
         }
 
+        private async Task PairSelected()
+        {            
+            var selected = (IdName)cmbDevices.SelectedItem;
+            if (selected == null)
+            {
+                Dsp("Nothing to pair");
+                return;
+            }
+            SaveConnectionStr(selected.Id);
+            await DoPair(selected.Id);
+        }
         private async void cmbDevices_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            var selected = (IdName)cmbDevices.SelectedItem;
-            await DoPair(selected.Id);
+            await PairSelected();
         }
 
         bool fire = false;
