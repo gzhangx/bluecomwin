@@ -344,7 +344,8 @@ namespace WpfBlueTooth
                 if (oldFire != fire)
                 {
                     oldFire = fire;
-                    await SendCmd("pin4", fire ? "1" : "0");
+                    Dsp(fire ? "fire1000" : "fire0");
+                    await SendCmd("pin9", fire ? "1000" : "0");
                 }
             }
         }
