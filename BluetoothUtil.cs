@@ -36,7 +36,7 @@ namespace WpfBlueTooth
             public GattCommunicationStatus Status { get; set; }
         }
         BluetoothLEAdvertisementWatcher bleWatcher;
-        Dictionary<ulong, ServiceDiscoverRet> foundDevs = new Dictionary<ulong, ServiceDiscoverRet>();
+        Dictionary<ulong, bool> foundDevs = new Dictionary<ulong, bool>();
         protected Action<string, Exception> onError;
         public Action<string> OnInfo;
         protected Action<ServiceDiscoverRet> OnDeviceFound;
@@ -77,6 +77,7 @@ namespace WpfBlueTooth
                         //Console.Write(dev.Name.Substring(0, 1));
                         return;
                     }
+                    foundDevs.Add(args.BluetoothAddress, true);
                 }
 
                 
@@ -89,11 +90,6 @@ namespace WpfBlueTooth
                         device = device,
                     };
                     OnDeviceFound?.Invoke(devd);
-                    lock (foundDevs)
-                    {
-                        if (!foundDevs.ContainsKey(args.BluetoothAddress))
-                            foundDevs.Add(args.BluetoothAddress, devd);
-                    }
                 }
                 
 
